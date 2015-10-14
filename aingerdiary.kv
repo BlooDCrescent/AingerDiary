@@ -1,0 +1,244 @@
+#:import Graph kivy.garden.graph
+#:import DatePicker Calendar.DatePicker
+
+
+<MainScreen>:
+    BoxLayout:
+        size_hint: 1, 1
+        orientation: 'vertical'
+        Button:
+            text: "Посмотреть статистику"
+            on_press: root.manager.switch_show()
+        Button:
+            text: "Добавить день с попытками"
+            on_press: root.manager.switch_date()
+        Button:
+            text: "Просмотреть предыдущие дни"
+
+
+<ShowScreen>:
+    Graph:
+        x_label: "Дней"
+        y_label: "Прогресс"
+        x_grid: True
+        y_grid: True
+
+
+<AskWidget>:
+    label: label
+    check_box: check_box
+    orientation: 'horizontal'
+    Label:
+        id: label
+        size_hint_x: 0.9
+    CheckBox:
+        id: check_box
+        size_hint_x: 0.1
+
+
+<AskTextWidget>:
+    text_input: text_input
+    orientation: 'horizontal'
+    Label:
+        id: label
+        size_hint_x: 0.8
+    TextInput:
+        id: text_input
+        size_hint_x: 0.2
+
+
+<TechniqueScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: 1, 1
+        AskWidget:
+            id: ask_straight
+            label_text: "Использовались ли прямые техники?"
+        AskWidget:
+            id: ask_dream
+            label_text: "Был ли сон?"
+        AskWidget:
+            id: ask_lucid
+            label_text: "Было ли осознание во сне?"
+            disabled: True
+        AskWidget:
+            id: ask_indirect
+            label_text: "Использовались ли непрямые техники?"
+            disabled: True
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: "Назад"
+                on_press: root.prev()
+            Button:
+                text: "Далее"
+                on_press: root.next()
+
+
+<StraightScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: 1, 1
+        Label:
+            text: "Укажите тип прямых техник"
+        GridLayout:
+            rows: 3
+            cols: 2
+            CheckBox:
+                id: cycle
+                group: 1
+            Label:
+                text: "Циклирование"
+            CheckBox:
+                id: alternation
+                group: 1
+            Label:
+                text: "Чередование"
+            CheckBox:
+                id: one_technique
+                group: 1
+            Label:
+                text: "Одна техника"
+        AskWidget:
+            id: straight_success
+            label_text: "Были ли прямые техники успешны?"
+        AskNumWidget:
+            id: straight_success_count
+            label_text: "Количество успешных прямых выходов"
+            minimum: 1
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: "Назад"
+                on_press: root.prev()
+            Button:
+                text: "Далее"
+                on_press: root.next()
+
+
+<LucidScreen>:
+    BoxLayout:
+        size_hint: 1, 1
+        orientation: 'vertical'
+        AskNumWidget:
+            id: dream_quality
+            label_text: "Качество сна (от 1 до 10)"
+            maximum: 10
+            minimum: 1
+        AskNumWidget:
+            id: number_of_lucid_dreams
+            label_text: "Количество осознаний во сне"
+            maximum: 0
+            minimum: 1
+            disabled: True
+        AskNumWidget:
+            id: number_of_indirect_tries
+            label_text: "Количество непрямых пробуждений"
+            disabled: True
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: "Назад"
+                on_press: root.prev()
+            Button:
+                text: "Далее"
+                on_press: root.next()
+
+
+
+<IndirectScreen>:
+    BoxLayout:
+        size_hint: 1, 1
+        orientation: 'vertical'
+        AskNumWidget:
+            id: brightness
+            label_text: "Укажите яркость пробуждения (от 1 до 10)"
+            minimum: 1
+            maximum: 10
+        AskWidget:
+            id: was_moving
+            label_text: "Было ли движение?"
+        AskWidget:
+            id: try_division
+            label_text: "Была ли попытка разделения?"
+        AskWidget:
+            id: success_division
+            label_text: "Была ли попытка разделения успешной?"
+        AskNumWidget:
+            id: number_of_cycles
+            label_text: "Количество циклов техник"
+            minimum: 0
+            maximum: 0
+        AskWidget:
+            id: technique_exit
+            label_text: "Был ли совершен выход при помощи техник?"
+        AskWidget:
+            id: undesired_asleep
+            label_text: "Было ли непроизвольное засыпание?"
+        AskWidget:
+            id: desired_asleep
+            label_text: "Было ли засыпание с намерением повторного выхода?"
+            disabled: True
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: "Назад"
+                on_press: root.prev()
+            Button:
+                text: "Далее"
+                on_press: root.next()
+
+
+<ExitScreen>:
+    BoxLayout:
+        size_hint: 1, 1
+        orientation: 'vertical'
+        AskWidget:
+            id: was_deepening
+            label_text: "Было ли углубление?"
+        AskWidget:
+            id: was_holding
+            label_text: "Было ли удержание?"
+        AskNumWidget:
+            id: items_done
+            label_text: "Пунктов плана действий выполнено:"
+            maximum: 0
+            minimum: 0
+        AskWidget:
+            id: was_catch
+            label_text: "Была ли попытка зацепиться за фазу?"
+        AskWidget:
+            id: was_repeated_exit
+            label_text: "Была ли попытка повторного выхода?"
+        AskWidget:
+            id: was_repeated_success
+            label_text: "Была ли попытка повторного выхода успешной?"
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: "Назад"
+                on_press: root.prev()
+            Button:
+                text: "Далее"
+                on_press: root.next()
+
+
+<AskDateScreen>:
+    pick: pick
+    BoxLayout:
+        size_hint: 1, 1
+        orientation: 'vertical'
+        Label:
+            text: "Укажите дату"
+            size_hint_y: 0.2
+        DatePicker:
+            id: pick
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.3
+            Button:
+                text: "Назад"
+                on_press: root.manager.ask_date_prev()
+            Button:
+                text: "Продолжить"
+                on_press: root.manager.ask_date_next()
