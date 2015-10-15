@@ -1,4 +1,3 @@
-from gnome_sudoku import number_box
 from kivy.app import App
 from kivy.clock import Clock
 # from kivy.lang import Builder
@@ -63,9 +62,6 @@ class TechniqueScreen(ScreenTemplate):
         return_dict["lucid"] = self.ids["ask_dream"].is_checked
         return_dict["indirect"] = self.ids["ask_indirect"].is_checked
         return return_dict
-
-    def next(self):
-        self.manager.
 
 
 class AskDateScreen(ScreenTemplate):
