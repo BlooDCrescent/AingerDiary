@@ -29,6 +29,7 @@ class ScreenTemplate(Screen):
     def prev(self):
         pass
 
+
 class MainScreen(ScreenTemplate):
     def go_try(self):
         self.switch("ask_date", "left")
@@ -43,6 +44,7 @@ class ShowScreen(ScreenTemplate):
 
 class TechniqueScreen(ScreenTemplate):
     def __init__(self, **kwargs):
+        self.stack = [False, False, False]
         super(TechniqueScreen, self).__init__(**kwargs)
         Clock.schedule_once(self.after_init, 0)
 
@@ -53,8 +55,25 @@ class TechniqueScreen(ScreenTemplate):
         if is_disabled:
             self.ids["ask_lucid"].disabled = self.ids["ask_indirect"].disabled = False
         else:
-            self.ids["ask_lucid"].check_box.active = self.ids["ask_indirect"].check_box.active = False
+            self.ids["ask_lucid"].is_checked = self.ids["ask_indirect"].is_checked = False
             self.ids["ask_lucid"].disabled = self.ids["ask_indirect"].disabled = True
+
+    def straight_changed(self, *args):
+        if self.ids["ask_straight"].is_checked:
+            self.next = self.stack[0] = self.manager.custom_screens["straight"]
+        else:
+            self.next = self.stack[1] or self.stack[2]
+
+    def lucid_changed(self, *args):
+        if self.ids["ask_lucid"].is_checked and not self.stack:
+            self.stack[1] = self.next = self.manager.custom_screens["lucid"]
+
+        elif not self.stack:
+            self.next = None
+        else:
+            self.next = self.stack[0]
+
+
 
     def collect_data(self):
         return_dict = dict()
@@ -62,6 +81,9 @@ class TechniqueScreen(ScreenTemplate):
         return_dict["lucid"] = self.ids["ask_dream"].is_checked
         return_dict["indirect"] = self.ids["ask_indirect"].is_checked
         return return_dict
+
+    def next(self):
+        self.manager.switch_to(self.next)
 
 
 class AskDateScreen(ScreenTemplate):
