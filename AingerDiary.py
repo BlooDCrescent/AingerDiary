@@ -99,7 +99,7 @@ class StraightScreen(ScreenTemplate):
                           and self.ids["straight_success_count"].text_input.text \
                           or not self.ids["straight_success"].is_checked
         if technique_set and num_success_set:
-            self.manager.straight_next()
+            super(ScreenTemplate, self).next()
             return
         content = BoxLayout(orientation='vertical')
         button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
@@ -114,6 +114,22 @@ class StraightScreen(ScreenTemplate):
             content.add_widget(label2)
         content.add_widget(button)
         popup.open()
+
+    def on_leave(self, *args):
+        number_of_screens = self.ids["straight_success_count"]
+        last_screen = None
+        for i in range(0, number_of_screens):
+            new_screen = ExitScreen(name="straight"+str(i))
+            if last_screen is None:
+                self.next_screen = new_screen
+                last_screen = new_screen
+                new_screen.prev_screen = self
+            else:
+                new_screen.prev_screen = last_screen
+                last_screen.next_screen = new_screen
+                last_screen = new_screen
+        next_screen = self.manager.get_next_screen("straight")
+        last_screen.next_screen = next_screen
 
     def collect_data(self):
         return_dict = dict()
@@ -220,6 +236,10 @@ class IndirectScreen(ScreenTemplate):
 
 
 class ExitScreen(ScreenTemplate):
+    pass
+
+
+class EndScreen(ScreenTemplate:
     pass
 
 
@@ -367,6 +387,21 @@ class WindowManager(ScreenManager):
         else:
             self.lucid_prev()
 
+    def get_next_screen(self, screen_name):
+        data = self.custom_screens["technique"].collect_data()
+        if screen_name == "straight":
+            if data["lucid"] or data["indirect"]:
+                return self.custom_screens["lucid"]
+            else:
+                return self.custom_screens["last"]
+        if screen_name == "lucid":
+            lucid_data = self.custom_screens["lucid"].collect_data()
+            if lucid_data["indirect_number"] > 0:
+                screen = self.custom_screens["lucid"].create_indirect_screens()
+                return screen
+            else:
+                return self.custom_screens["last"]
+
     def exit_next(self):
         pass
 
@@ -403,6 +438,7 @@ class AingerDiaryApp(App):
         self.sm.custom_screens["straight"] = (StraightScreen(name="straight", prev=self.sm.custom_screens["technique"]))
         self.sm.custom_screens["lucid"] = (LucidScreen(name="lucid"))
         self.sm.custom_screens["indirect"] = (IndirectScreen(name="indirect"))
+        self.sm.custom_screens["last"] = (EndScreen(name="last"))
         self.sm.switch_to(self.sm.custom_screens["main_menu"])
         return self.sm
 
