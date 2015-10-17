@@ -18,11 +18,18 @@
 
 
 <ShowScreen>:
-    Graph:
-        x_label: "Дней"
-        y_label: "Прогресс"
-        x_grid: True
-        y_grid: True
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: 1, 1
+        Graph:
+            x_label: "Дней"
+            y_label: "Прогресс"
+            x_grid: True
+            y_grid: True
+        Button:
+            size_hint: 1, 0.2
+            text: "Назад"
+            on_press: root.prev()
 
 
 <AskWidget>:
@@ -247,7 +254,7 @@
             size_hint_y: 0.3
             Button:
                 text: "Назад"
-                on_press: root.manager.ask_date_prev()
+                on_press: root.prev()
             Button:
                 text: "Продолжить"
-                on_press: root.manager.ask_date_next()
+                on_press: root.next()
