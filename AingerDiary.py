@@ -104,7 +104,7 @@ class AskDateScreen(ScreenTemplate):
 class StraightScreen(ScreenTemplate):
 
     def __init__(self, *args, **kwargs):
-        super(StraightScreen, self).__init__(*args, **kwargs)
+        super(StraightScreen, self).__init__(**kwargs)
         self.ids["straight_success"].bind(is_checked=self.change_straight_success_count_disabled)
 
     def change_straight_success_count_disabled(self, widget, value):
@@ -129,21 +129,8 @@ class StraightScreen(ScreenTemplate):
         self.show_popup(*content)
 
     def on_leave(self, *args):
-        if not self.manager is None:
-            number_of_screens = int(self.ids["straight_success_count"].text_input.text)
-            last_screen = None
-            for i in range(0, number_of_screens):
-                new_screen = ExitScreen(name="straight"+str(i))
-                if last_screen is None:
-                    self.next_screen = new_screen
-                    last_screen = new_screen
-                    new_screen.prev_screen = self
-                else:
-                    new_screen.prev_screen = last_screen
-                    last_screen.next_screen = new_screen
-                    last_screen = new_screen
-            next_screen = self.manager.get_next_screen("straight")
-            last_screen.next_screen = next_screen
+        if self.manager is not None:
+            pass
 
     def collect_data(self):
         return_dict = dict()
@@ -161,14 +148,26 @@ class StraightScreen(ScreenTemplate):
         return return_dict
 
     def calculate_next_screens(self):
-        number_of_straight_exits = self.ids["straight_success_number"].text_input.text
-
+        number_of_straight_exits = self.ids["straight_success_count"].text_input.text
         if number_of_straight_exits:
             number = int(number_of_straight_exits)
+            last_screen = None
             for i in range(0, number):
-                screen = ExitScreen(name=)
-
-
+                new_screen = ExitScreen(name="straight"+str(i))
+                if last_screen is None:
+                    self.next_screen = new_screen
+                    last_screen = new_screen
+                    new_screen.prev_screen = self
+                else:
+                    new_screen.prev_screen = last_screen
+                    last_screen.next_screen = new_screen
+                    last_screen = new_screen
+            next_screen = self.manager.get_next_screen("straight")
+            next_screen.prev_screen = self
+            last_screen.next_screen = next_screen
+        else:
+            next_screen = self.manager.get_next_screen("straight")
+            self.next_screen = next_screen
 
 
 class LucidScreen(ScreenTemplate):
@@ -221,7 +220,7 @@ class LucidScreen(ScreenTemplate):
                 new_screen.prev_screen = last_screen
                 last_screen.next_screen = new_screen
                 last_screen = new_screen
-        next_screen = self.manager.get_next_screen("straight")
+        next_screen = self.manager.get_next_screen("lucid")
         last_screen.next_screen = next_screen
 
 
