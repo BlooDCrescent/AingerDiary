@@ -27,6 +27,19 @@ class ScreenTemplate(Screen):
     def prev(self):
         self.manager.switch_to(self.prev_screen, direction="right")
 
+    @staticmethod
+    def show_popup(*args):
+        content = BoxLayout(orientation='vertical')
+        things = dict()
+        for text in args:
+            things[text] = Label(text=text)
+            content.add_widget(things[text])
+        popup = Popup(title='Ошибка', content=content, size_hint=(0, 0), size=(400, 400))
+        button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
+        button.bind(on_press=popup.dismiss)
+        content.add_widget(button)
+        popup.open()
+
 
 class MainScreen(ScreenTemplate):
     def go_try(self):
@@ -89,6 +102,14 @@ class AskDateScreen(ScreenTemplate):
 
 
 class StraightScreen(ScreenTemplate):
+
+    def __init__(self, *args, **kwargs):
+        super(StraightScreen, self).__init__(*args, **kwargs)
+        self.ids["straight_success"].bind(is_checked=self.change_straight_success_count_disabled)
+
+    def change_straight_success_count_disabled(self, widget, value):
+        self.ids["straight_success_count"].disabled = not value
+
     def next(self):
         technique_set = self.ids["cycle"].active \
                         or self.ids["alternation"].active \
@@ -97,21 +118,15 @@ class StraightScreen(ScreenTemplate):
                           and self.ids["straight_success_count"].text_input.text \
                           or not self.ids["straight_success"].is_checked
         if technique_set and num_success_set:
-            super(ScreenTemplate, self).next()
+            self.calculate_next_screens()
+            self.manager.switch_to(self.next_screen, direction="left")
             return
-        content = BoxLayout(orientation='vertical')
-        button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
-        label = Label(text='Укажите тип используемых прямых техник')
-        label2 = Label(text='Укажите количество выходов')
-        popup = Popup(title='Ошибка', content=content, size_hint=(0, 0), size=(400, 400))
-        button.bind(on_press=popup.dismiss)
-        content.clear_widgets()
+        content = []
         if not technique_set:
-            content.add_widget(label)
+            content.append("Укажите тип используемых прямых техник")
         if not num_success_set:
-            content.add_widget(label2)
-        content.add_widget(button)
-        popup.open()
+            content.append("Укажите количество выходов")
+        self.show_popup(*content)
 
     def on_leave(self, *args):
         if not self.manager is None:
@@ -145,6 +160,16 @@ class StraightScreen(ScreenTemplate):
             return_dict["success"] = False
         return return_dict
 
+    def calculate_next_screens(self):
+        number_of_straight_exits = self.ids["straight_success_number"].text_input.text
+
+        if number_of_straight_exits:
+            number = int(number_of_straight_exits)
+            for i in range(0, number):
+                screen = ExitScreen(name=)
+
+
+
 
 class LucidScreen(ScreenTemplate):
 
@@ -159,22 +184,14 @@ class LucidScreen(ScreenTemplate):
                 and (is_indirect_disabled or (indirect_number and not is_indirect_disabled)):
                 self.manager.lucid_next()
                 return
-        content = BoxLayout(orientation='vertical')
-        button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
-        label = Label(text='Укажите качество сна')
-        label2 = Label(text='Укажите количество осознаний во сне')
-        label3 = Label(text='Укажите количество непрямых попыток')
-        popup = Popup(title='Ошибка', content=content, size_hint=(0, 0), size=(400, 400))
-        button.bind(on_press=popup.dismiss)
-        content.clear_widgets()
+        content = []
         if not quality_set:
-            content.add_widget(label)
+            content.append('Укажите качество сна')
         if not lucid_number and not is_lucid_disabled:
-            content.add_widget(label2)
+            content.append('Укажите количество осознаний во сне')
         if not indirect_number and not is_indirect_disabled:
-            content.add_widget(label3)
-        content.add_widget(button)
-        popup.open()
+            content.append('Укажите количество непрямых попыток')
+        self.show_popup(*content)
 
     def switch_lucid(self, on_off):
         self.ids["number_of_lucid_dreams"].disabled = not on_off
@@ -217,19 +234,12 @@ class IndirectScreen(ScreenTemplate):
         if brightness and num_cycles:
             self.manager.indirect_next()
             return
-        content = BoxLayout(orientation='vertical')
-        button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
-        label = Label(text='Укажите яркость пробуждения')
-        label2 = Label(text='Укажите количество циклов техник')
-        popup = Popup(title='Ошибка', content=content, size_hint=(0, 0), size=(400, 400))
-        button.bind(on_press=popup.dismiss)
-        content.clear_widgets()
+        content = []
         if not brightness:
-            content.add_widget(label)
+            content.append('Укажите яркость пробуждения')
         if not num_cycles:
-            content.add_widget(label2)
-        content.add_widget(button)
-        popup.open()
+            content.append('Укажите количество циклов техник')
+        self.show_popup(*content)
 
     def collect_data(self):
         return_dict = dict()
