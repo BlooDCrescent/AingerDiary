@@ -10,6 +10,7 @@ from kivy.uix.popup import Popup
 # from kivy.garden.graph import Graph, MeshLinePlot
 # from datetime import date
 from kivy.properties import ObjectProperty, StringProperty, BooleanProperty, NumericProperty
+from functools import partial
 import sqlite3
 import os
 
@@ -17,17 +18,27 @@ __author__ = "Unencrypted"
 
 
 class ScreenTemplate(Screen):
-    next = ObjectProperty(None)
-    prev = ObjectProperty(None)
-
-    def switch(self, direction, screen):
-        self.manager.switch_to(self.manager.custom_screens[screen], direction=direction)
+    next_screen = ObjectProperty(None, allownone=True)
+    prev_screen = ObjectProperty(None, allownone=True)
 
     def next(self):
-        pass
+        self.manager.switch_to(self.next_screen, direction="left")
 
     def prev(self):
-        pass
+        self.manager.switch_to(self.prev_screen, direction="right")
+
+    @staticmethod
+    def show_popup(*args):
+        content = BoxLayout(orientation='vertical')
+        things = dict()
+        for text in args:
+            things[text] = Label(text=text)
+            content.add_widget(things[text])
+        popup = Popup(title='Ошибка', content=content, size_hint=(0, 0), size=(400, 400))
+        button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
+        button.bind(on_press=popup.dismiss)
+        content.add_widget(button)
+        popup.open()
 
 
 class MainScreen(ScreenTemplate):
@@ -44,12 +55,21 @@ class ShowScreen(ScreenTemplate):
 
 class TechniqueScreen(ScreenTemplate):
     def __init__(self, **kwargs):
-        self.stack = [False, False, False]
+        self.stack_usage = [False, False]
+        self.stack = []
         super(TechniqueScreen, self).__init__(**kwargs)
         Clock.schedule_once(self.after_init, 0)
 
     def after_init(self, *args):
         self.ids["ask_dream"].check_box.bind(active=self.dream_changed)
+        self.ids["ask_straight"].bind(is_checked=partial(self.changed, 0))
+        self.ids["ask_lucid"].bind(is_checked=partial(self.changed, 1))
+        self.ids["ask_indirect"].bind(is_checked=partial(self.changed, 1))
+
+    def on_enter(self, *args):
+        if not self.stack:
+            self.stack = [self.manager.custom_screens["straight"],
+                          self.manager.custom_screens["lucid"]]
 
     def dream_changed(self, widget, is_disabled):
         if is_disabled:
@@ -58,22 +78,16 @@ class TechniqueScreen(ScreenTemplate):
             self.ids["ask_lucid"].is_checked = self.ids["ask_indirect"].is_checked = False
             self.ids["ask_lucid"].disabled = self.ids["ask_indirect"].disabled = True
 
-    def straight_changed(self, *args):
-        if self.ids["ask_straight"].is_checked:
-            self.next = self.stack[0] = self.manager.custom_screens["straight"]
+    def changed(self, number, *args):
+        if args[1]:
+            self.stack_usage[number] = True
         else:
-            self.next = self.stack[1] or self.stack[2]
-
-    def lucid_changed(self, *args):
-        if self.ids["ask_lucid"].is_checked and not self.stack:
-            self.stack[1] = self.next = self.manager.custom_screens["lucid"]
-
-        elif not self.stack:
-            self.next = None
-        else:
-            self.next = self.stack[0]
-
-
+            self.stack_usage[number] = False
+        for i in range(0, number + 1):
+            if self.stack_usage[i]:
+                self.next_screen = self.stack[i]
+                break
+            self.next_screen = None
 
     def collect_data(self):
         return_dict = dict()
@@ -82,15 +96,20 @@ class TechniqueScreen(ScreenTemplate):
         return_dict["indirect"] = self.ids["ask_indirect"].is_checked
         return return_dict
 
-    def next(self):
-        self.manager.switch_to(self.next)
-
 
 class AskDateScreen(ScreenTemplate):
     pick = ObjectProperty(None)
 
 
 class StraightScreen(ScreenTemplate):
+
+    def __init__(self, *args, **kwargs):
+        super(StraightScreen, self).__init__(**kwargs)
+        self.ids["straight_success"].bind(is_checked=self.change_straight_success_count_disabled)
+
+    def change_straight_success_count_disabled(self, widget, value):
+        self.ids["straight_success_count"].disabled = not value
+
     def next(self):
         technique_set = self.ids["cycle"].active \
                         or self.ids["alternation"].active \
@@ -99,21 +118,19 @@ class StraightScreen(ScreenTemplate):
                           and self.ids["straight_success_count"].text_input.text \
                           or not self.ids["straight_success"].is_checked
         if technique_set and num_success_set:
-            self.manager.straight_next()
+            self.calculate_next_screens()
+            self.manager.switch_to(self.next_screen, direction="left")
             return
-        content = BoxLayout(orientation='vertical')
-        button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
-        label = Label(text='Укажите тип используемых прямых техник')
-        label2 = Label(text='Укажите количество выходов')
-        popup = Popup(title='Ошибка', content=content, size_hint=(0, 0), size=(400, 400))
-        button.bind(on_press=popup.dismiss)
-        content.clear_widgets()
+        content = []
         if not technique_set:
-            content.add_widget(label)
+            content.append("Укажите тип используемых прямых техник")
         if not num_success_set:
-            content.add_widget(label2)
-        content.add_widget(button)
-        popup.open()
+            content.append("Укажите количество выходов")
+        self.show_popup(*content)
+
+    def on_leave(self, *args):
+        if self.manager is not None:
+            pass
 
     def collect_data(self):
         return_dict = dict()
@@ -130,6 +147,28 @@ class StraightScreen(ScreenTemplate):
             return_dict["success"] = False
         return return_dict
 
+    def calculate_next_screens(self):
+        number_of_straight_exits = self.ids["straight_success_count"].text_input.text
+        if number_of_straight_exits:
+            number = int(number_of_straight_exits)
+            last_screen = None
+            for i in range(0, number):
+                new_screen = ExitScreen(name="straight"+str(i))
+                if last_screen is None:
+                    self.next_screen = new_screen
+                    last_screen = new_screen
+                    new_screen.prev_screen = self
+                else:
+                    new_screen.prev_screen = last_screen
+                    last_screen.next_screen = new_screen
+                    last_screen = new_screen
+            next_screen = self.manager.get_next_screen("straight")
+            next_screen.prev_screen = self
+            last_screen.next_screen = next_screen
+        else:
+            next_screen = self.manager.get_next_screen("straight")
+            self.next_screen = next_screen
+
 
 class LucidScreen(ScreenTemplate):
 
@@ -144,22 +183,14 @@ class LucidScreen(ScreenTemplate):
                 and (is_indirect_disabled or (indirect_number and not is_indirect_disabled)):
                 self.manager.lucid_next()
                 return
-        content = BoxLayout(orientation='vertical')
-        button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
-        label = Label(text='Укажите качество сна')
-        label2 = Label(text='Укажите количество осознаний во сне')
-        label3 = Label(text='Укажите количество непрямых попыток')
-        popup = Popup(title='Ошибка', content=content, size_hint=(0, 0), size=(400, 400))
-        button.bind(on_press=popup.dismiss)
-        content.clear_widgets()
+        content = []
         if not quality_set:
-            content.add_widget(label)
+            content.append('Укажите качество сна')
         if not lucid_number and not is_lucid_disabled:
-            content.add_widget(label2)
+            content.append('Укажите количество осознаний во сне')
         if not indirect_number and not is_indirect_disabled:
-            content.add_widget(label3)
-        content.add_widget(button)
-        popup.open()
+            content.append('Укажите количество непрямых попыток')
+        self.show_popup(*content)
 
     def switch_lucid(self, on_off):
         self.ids["number_of_lucid_dreams"].disabled = not on_off
@@ -176,6 +207,22 @@ class LucidScreen(ScreenTemplate):
             return_dict["indirect_number"] = int(self.ids["number_of_indirect_tries"].text_input.text)
         return return_dict
 
+    def create_indirect_screens(self):
+        number_of_wakes = int(self.ids["number_of_lucid_dreams"].text_input.text)
+        last_screen = None
+        for i in range(0, number_of_wakes):
+            new_screen = IndirectScreen(name="indirect"+str(i))
+            if last_screen is None:
+                self.next_screen = new_screen
+                last_screen = new_screen
+                new_screen.prev_screen = self
+            else:
+                new_screen.prev_screen = last_screen
+                last_screen.next_screen = new_screen
+                last_screen = new_screen
+        next_screen = self.manager.get_next_screen("lucid")
+        last_screen.next_screen = next_screen
+
 
 class IndirectScreen(ScreenTemplate):
 
@@ -186,19 +233,12 @@ class IndirectScreen(ScreenTemplate):
         if brightness and num_cycles:
             self.manager.indirect_next()
             return
-        content = BoxLayout(orientation='vertical')
-        button = Button(text='Закрыть', size_hint=(None, 0.2), pos_hint={'center_x': 0.5})
-        label = Label(text='Укажите яркость пробуждения')
-        label2 = Label(text='Укажите количество циклов техник')
-        popup = Popup(title='Ошибка', content=content, size_hint=(0, 0), size=(400, 400))
-        button.bind(on_press=popup.dismiss)
-        content.clear_widgets()
+        content = []
         if not brightness:
-            content.add_widget(label)
+            content.append('Укажите яркость пробуждения')
         if not num_cycles:
-            content.add_widget(label2)
-        content.add_widget(button)
-        popup.open()
+            content.append('Укажите количество циклов техник')
+        self.show_popup(*content)
 
     def collect_data(self):
         return_dict = dict()
@@ -220,6 +260,10 @@ class IndirectScreen(ScreenTemplate):
 
 
 class ExitScreen(ScreenTemplate):
+    pass
+
+
+class EndScreen(ScreenTemplate):
     pass
 
 
@@ -306,84 +350,20 @@ class WindowManager(ScreenManager):
     def switch_date(self):
         self.switch_to(self.custom_screens["ask_date"], direction="left")
 
-    def ask_date_prev(self):
-        self.switch_to(self.custom_screens["main_menu"], direction="right")
-
-    def ask_date_next(self):
-        self.switch_to(self.custom_screens["technique"], direction="left")
-
-    def technique_prev(self):
-        self.switch_to(self.custom_screens["ask_date"], direction="right")
-
-    def technique_next(self):
-        self.straight_present = self.dream_present = self.lucid_present = self.indirect_present = False
-        tech = self.get_screen("technique")
-        if tech.ids["ask_dream"].is_checked:
-            self.dream_present = True
-            if tech.ids["ask_indirect"].is_checked:
-                self.indirect_present = True
-                self.custom_screens["lucid"].switch_indirect(True)
-                self.switch_to(self.custom_screens["lucid"], direction="left")
+    def get_next_screen(self, screen_name):
+        data = self.custom_screens["technique"].collect_data()
+        if screen_name == "straight":
+            if data["lucid"] or data["indirect"]:
+                return self.custom_screens["lucid"]
             else:
-                self.custom_screens["lucid"].switch_indirect(False)
-            if tech.ids["ask_lucid"].is_checked:
-                self.lucid_present = True
-                self.custom_screens["lucid"].switch_lucid(True)
-                if self.current_screen != self.custom_screens["lucid"]:
-                    self.switch_to(self.custom_screens["lucid"], direction="left")
+                return self.custom_screens["last"]
+        if screen_name == "lucid":
+            lucid_data = self.custom_screens["lucid"].collect_data()
+            if lucid_data["indirect_number"] > 0:
+                screen = self.custom_screens["lucid"].create_indirect_screens()
+                return screen
             else:
-                self.custom_screens["lucid"].switch_lucid(False)
-        if tech.ids["ask_straight"].is_checked:
-            self.straight_present = True
-            self.switch_to(self.custom_screens["straight"], direction="left")
-
-    def straight_next(self):
-        if self.lucid_present:
-            self.switch_to(self.custom_screens["lucid"], direction="left")
-        else:
-            self.lucid_next()
-
-    def lucid_next(self):
-        if self.indirect_present:
-            self.switch_to(self.custom_screens["indirect"], direction="left")
-        else:
-            self.indirect_next()
-
-    def indirect_next(self):
-        self.compute_exit_screens()
-
-    def straight_prev(self):
-        self.switch_to(self.custom_screens["technique"], direction="right")
-
-    def lucid_prev(self):
-        if self.straight_present:
-            self.switch_to(self.custom_screens["straight"], direction="right")
-        else:
-            self.straight_prev()
-
-    def indirect_prev(self):
-        if self.lucid_present:
-            self.switch_to(self.custom_screens["lucid"], direction="right")
-        else:
-            self.lucid_prev()
-
-    def exit_next(self):
-        pass
-
-    def exit_prev(self):
-        pass
-
-    def compute_indirect_screens(self):
-        lucid_data = self.custom_screens["lucid"].collect_data()
-        number_of_indirect_tries = lucid_data["indirect_number"]
-        for i in number_of_indirect_tries:
-            self.custom_screens["indirect" + str(i)] = ExitScreen(name="indirect" + str(i))
-
-
-    def compute_exit_screens(self):
-        technique_data = self.custom_screens["technique"].collect_data()
-
-        print("NotImplementedYet")
+                return self.custom_screens["last"]
 
 
 class AingerDiaryApp(App):
@@ -394,15 +374,19 @@ class AingerDiaryApp(App):
     def build(self):
         self.sm.custom_screens["main_menu"] = (MainScreen(name="main_menu"))
         self.sm.custom_screens["show"] = (ShowScreen(name="show",
-                                                     prev=self.sm.custom_screens["main_menu"]))
+                                                     prev_screen=self.sm.custom_screens["main_menu"]))
         self.sm.custom_screens["ask_date"] = (AskDateScreen(name="ask_date",
-                                                            prev=self.sm.custom_screens["main_menu"]))
+                                                            prev_screen=self.sm.custom_screens["main_menu"]))
         self.sm.custom_screens["technique"] = (TechniqueScreen(name="technique",
-                                                               prev=self.sm.custom_screens["ask_date"]))
-        self.sm.custom_screens["ask_date"].next = self.sm.custom_screens["technique"]
-        self.sm.custom_screens["straight"] = (StraightScreen(name="straight", prev=self.sm.custom_screens["technique"]))
-        self.sm.custom_screens["lucid"] = (LucidScreen(name="lucid"))
-        self.sm.custom_screens["indirect"] = (IndirectScreen(name="indirect"))
+                                                               prev_screen=self.sm.custom_screens["ask_date"]))
+        self.sm.custom_screens["ask_date"].next_screen = self.sm.custom_screens["technique"]
+        self.sm.custom_screens["straight"] = (StraightScreen(name="straight",
+                                                             prev_screen=self.sm.custom_screens["technique"]))
+        self.sm.custom_screens["lucid"] = (LucidScreen(name="lucid",
+                                                       prev_screen=self.sm.custom_screens["technique"]))
+        self.sm.custom_screens["indirect"] = (IndirectScreen(name="indirect",
+                                                             prev_screen=self.sm.custom_screens["technique"]))
+        self.sm.custom_screens["last"] = (EndScreen(name="last"))
         self.sm.switch_to(self.sm.custom_screens["main_menu"])
         return self.sm
 
