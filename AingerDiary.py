@@ -88,6 +88,9 @@ class TechniqueScreen(ScreenTemplate):
                 self.next_screen = self.stack[i]
                 break
             self.next_screen = None
+        if number:
+            self.manager.set_lucid(self.ids["ask_lucid"].is_checked)
+            self.manager.set_indirect(self.ids["ask_indirect"].is_checked)
 
     def collect_data(self):
         return_dict = dict()
@@ -102,7 +105,6 @@ class AskDateScreen(ScreenTemplate):
 
 
 class StraightScreen(ScreenTemplate):
-
     def __init__(self, *args, **kwargs):
         super(StraightScreen, self).__init__(**kwargs)
         self.ids["straight_success"].bind(is_checked=self.change_straight_success_count_disabled)
@@ -163,7 +165,7 @@ class StraightScreen(ScreenTemplate):
                     last_screen.next_screen = new_screen
                     last_screen = new_screen
             next_screen = self.manager.get_next_screen("straight")
-            next_screen.prev_screen = self
+            next_screen.prev_screen = last_screen
             last_screen.next_screen = next_screen
         else:
             next_screen = self.manager.get_next_screen("straight")
@@ -181,7 +183,8 @@ class LucidScreen(ScreenTemplate):
         if quality_set \
                 and (is_lucid_disabled or (lucid_number and not is_lucid_disabled)) \
                 and (is_indirect_disabled or (indirect_number and not is_indirect_disabled)):
-                self.manager.lucid_next()
+                self.create_indirect_screens()
+                self.next()
                 return
         content = []
         if not quality_set:
@@ -208,20 +211,25 @@ class LucidScreen(ScreenTemplate):
         return return_dict
 
     def create_indirect_screens(self):
-        number_of_wakes = int(self.ids["number_of_lucid_dreams"].text_input.text)
-        last_screen = None
-        for i in range(0, number_of_wakes):
-            new_screen = IndirectScreen(name="indirect"+str(i))
-            if last_screen is None:
-                self.next_screen = new_screen
-                last_screen = new_screen
-                new_screen.prev_screen = self
-            else:
-                new_screen.prev_screen = last_screen
-                last_screen.next_screen = new_screen
-                last_screen = new_screen
-        next_screen = self.manager.get_next_screen("lucid")
-        last_screen.next_screen = next_screen
+        text_number_of_wakes = self.ids["number_of_lucid_dreams"].text_input.text
+        if text_number_of_wakes:
+            number_of_wakes = int(text_number_of_wakes)
+            last_screen = None
+            for i in range(0, number_of_wakes):
+                new_screen = IndirectScreen(name="indirect"+str(i))
+                if last_screen is None:
+                    self.next_screen = new_screen
+                    last_screen = new_screen
+                    new_screen.prev_screen = self
+                else:
+                    new_screen.prev_screen = last_screen
+                    last_screen.next_screen = new_screen
+                    last_screen = new_screen
+            next_screen = self.manager.get_next_screen("lucid")
+            next_screen.prev_screen = last_screen
+            last_screen.next_screen = next_screen
+        else:
+            self.next_screen = self.manager.get_next_screen("lucid")
 
 
 class IndirectScreen(ScreenTemplate):
@@ -344,6 +352,12 @@ class WindowManager(ScreenManager):
         base_path = os.getcwd() + os.sep + "AingerDiary.db"
         self.connection = sqlite3.connect(base_path)
 
+    def set_lucid(self, is_enabled):
+        self.custom_screens["lucid"].ids["number_of_lucid_dreams"].disabled = not is_enabled
+
+    def set_indirect(self, is_enabled):
+        self.custom_screens["lucid"].ids["number_of_indirect_tries"].disabled = not is_enabled
+
     def switch_show(self):
         self.switch_to(self.custom_screens["show"], direction="left")
 
@@ -359,7 +373,7 @@ class WindowManager(ScreenManager):
                 return self.custom_screens["last"]
         if screen_name == "lucid":
             lucid_data = self.custom_screens["lucid"].collect_data()
-            if lucid_data["indirect_number"] > 0:
+            if "indirect_number" in lucid_data:
                 screen = self.custom_screens["lucid"].create_indirect_screens()
                 return screen
             else:
