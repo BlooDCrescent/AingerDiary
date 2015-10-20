@@ -43,7 +43,7 @@ class ScreenTemplate(Screen):
     def create_screens(self, screen_type, count):
         types = {"straight": ExitScreen, "lucid": ExitScreen, "indirect": IndirectScreen}
         return_screen = new_screen = types[screen_type](name=screen_type + "0")
-        self.next_screen = new_screen
+        # self.next_screen = new_screen
         self.manager.custom_screens[new_screen.name] = new_screen
         new_screen.prev_screen = self
         last_screen = new_screen
@@ -52,9 +52,9 @@ class ScreenTemplate(Screen):
             new_screen.prev_screen = last_screen
             last_screen.next_screen = new_screen
             last_screen = new_screen
-            self.manager.custom_screens.append(new_screen)
+            self.manager.custom_screens[new_screen.name] = new_screen
         last_screen.next_screen = None
-        return return_screen
+        return return_screen, last_screen
 
 
 class MainScreen(ScreenTemplate):
@@ -108,6 +108,7 @@ class TechniqueScreen(ScreenTemplate):
             self.manager.set_lucid(self.ids["ask_lucid"].is_checked)
             self.manager.set_indirect(self.ids["ask_indirect"].is_checked)
 
+
     def collect_data(self):
         return_dict = dict()
         return_dict["straight"] = self.ids["ask_straight"].is_checked
@@ -138,7 +139,10 @@ class StraightScreen(ScreenTemplate):
         if technique_set and num_success_set:
             last_screen = self
             if self.ids["straight_success_count"].text_input.text and self.ids["straight_success"].is_checked:
-                last_screen = self.create_screens("straight", int(self.ids["straight_success_count"].text_input.text))
+                tuple_screens = self.create_screens("straight", int(self.ids["straight_success_count"].text_input.text))
+                last_screen = tuple_screens[1]
+                self.next_screen = tuple_screens[0]
+                tuple_screens[0].prev_screen = self
             next_screen = self.manager.get_next_screen("straight")
             last_screen.next_screen = next_screen
             next_screen.prev_screen = last_screen
@@ -211,32 +215,17 @@ class LucidScreen(ScreenTemplate):
     def create_lucid_screens(self):
         last_screen = self.create_screens("lucid", int(self.ids["number_of_lucid_dreams"].text_input.text))
         next_screen = self.manager.get_next_screen("lucid")
-        last_screen.next_screen = next_screen
-        next_screen.prev_screen = last_screen
 
     def create_indirect_wakes_screens(self):
-        text_number_of_wakes = self.ids["number_of_indirect_tries"].text_input.text
-        number_of_wakes = int(text_number_of_wakes)
-        last_screen = None
-        return_screen = None
-        for i in range(0, number_of_wakes):
-            new_screen = IndirectScreen(name="indirect_wake"+str(i))
-            if last_screen is None:
-                return_screen = new_screen
-                self.next_screen = new_screen
-                last_screen = new_screen
-                new_screen.prev_screen = self
-            else:
-                new_screen.prev_screen = last_screen
-                last_screen.next_screen = new_screen
-                last_screen = new_screen
+        last_screen = self.create_screens("indirect", int(self.ids["number_of_indirect_tries"].text_input.text))
         next_screen = self.manager.get_next_screen("indirect")
-        next_screen.prev_screen = last_screen
-        last_screen.next_screen = next_screen
-        return return_screen
 
 
 class IndirectScreen(ScreenTemplate):
+
+    def __init__(self, **kwargs):
+        super(IndirectScreen, self).__init__(**kwargs)
+        self.success = False
 
     def next(self):
         brightness = self.ids["brightness"].text_input.text
@@ -254,10 +243,22 @@ class IndirectScreen(ScreenTemplate):
         self.show_popup(*content)
 
     def prepare_next_screen(self):
-        if self.ids["success_division"].is_checked or self.ids["technique_exit"]:
+        if self.ids["success_division"].is_checked or self.ids["technique_exit"] and not self.success:
             next_screen = ExitScreen(name=self.name + "exit")
-            self.next_screen.prev_screen = next_screen
+            last_screen = self.next_screen
             self.next_screen = next_screen
+            next_screen.prev_screen = self
+            last_screen.prev_screen = next_screen
+            next_screen.next_screen = last_screen
+            self.success = True
+        elif self.success:
+            self.success = False
+            last_screen = self.next_screen.next_screen
+            del self.manager.custom_screens[self.name + "exit"]
+            self.next_screen = last_screen
+            last_screen.prev_screen = self
+        else:
+            pass
 
     def collect_data(self):
         return_dict = dict()
