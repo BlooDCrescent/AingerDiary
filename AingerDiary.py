@@ -56,7 +56,7 @@ class ScreenTemplate(Screen):
         new_screen.prev_screen = self
         last_screen = new_screen
         for i in range(0, count - 1):
-            new_screen = types[screen_type](name=screen_type + str(i + 1))
+            new_screen = types[screen_type](name=screen_type + str(i + 1), screen_type=type_names[screen_type])
             new_screen.prev_screen = last_screen
             last_screen.next_screen = new_screen
             last_screen = new_screen
@@ -79,29 +79,14 @@ class ShowScreen(ScreenTemplate):
 
 class TechniqueScreen(ScreenTemplate):
     def __init__(self, **kwargs):
-        self.stack_usage = [False, False, False, True]
+        self.stack_usage = [False, False, False, False, True]
         self.stack = []
-        self.binded = False
+        self.binding = False
         super(TechniqueScreen, self).__init__(**kwargs)
         Clock.schedule_once(self.after_init, 0)
 
     def after_init(self, *args):
-        self.ids["ask_dream"].check_box.bind(active=self.dream_changed)
-
-
-    def on_enter(self, *args):
-        if not self.binded:
-            self.ids["ask_straight"].bind(is_checked=partial(self.changed, 0))
-            self.ids["ask_lucid"].bind(is_checked=partial(self.changed, 1))
-            self.ids["ask_indirect"].bind(is_checked=partial(self.changed, 2))
-            self.binded = True
-        if not self.stack:
-            self.stack = [self.manager.custom_screens["straight"],
-                          self.manager.custom_screens["lucid"],
-                          self.manager.custom_screens["lucid"],
-                          self.manager.get_last_screen()]
-            self.next_screen = self.stack[2]
-            self.stack[2].prev_screen = self
+        pass
 
     def dream_changed(self, widget, is_disabled):
         if is_disabled:
@@ -109,6 +94,23 @@ class TechniqueScreen(ScreenTemplate):
         else:
             self.ids["ask_lucid"].is_checked = self.ids["ask_indirect"].is_checked = False
             self.ids["ask_lucid"].disabled = self.ids["ask_indirect"].disabled = True
+        self.changed(1, None, is_disabled)
+
+    def on_enter(self, *args):
+        if not self.binding:
+            self.ids["ask_dream"].bind(is_checked=self.dream_changed)
+            self.ids["ask_straight"].bind(is_checked=partial(self.changed, 0))
+            self.ids["ask_lucid"].bind(is_checked=partial(self.changed, 2))
+            self.ids["ask_indirect"].bind(is_checked=partial(self.changed, 3))
+            self.binding = True
+        if not self.stack:
+            self.stack = [self.manager.custom_screens["straight"],
+                          self.manager.custom_screens["lucid"],
+                          self.manager.custom_screens["lucid"],
+                          self.manager.custom_screens["lucid"],
+                          self.manager.get_last_screen()]
+            self.next_screen = self.stack[len(self.stack) - 1]
+            self.stack[len(self.stack) - 1].prev_screen = self
 
     def changed(self, number, *args):
         if args[1]:
@@ -402,6 +404,7 @@ class WindowManager(ScreenManager):
         self.connection = sqlite3.connect(base_path)
 
     def set_lucid(self, is_enabled):
+        print(self.custom_screens)
         self.custom_screens["lucid"].ids["number_of_lucid_dreams"].disabled = not is_enabled
 
     def set_indirect(self, is_enabled):
