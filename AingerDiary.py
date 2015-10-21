@@ -184,25 +184,29 @@ class LucidScreen(ScreenTemplate):
 
     def next(self):
         quality_set = self.ids["dream_quality"].text_input.text
-        lucid_number = self.ids["number_of_lucid_dreams"].text_input.text
+        lucid_text = self.ids["number_of_lucid_dreams"].text_input.text
         is_lucid_disabled = self.ids["number_of_lucid_dreams"].disabled
-        indirect_number = self.ids["number_of_indirect_tries"].text_input.text
+        indirect_text = self.ids["number_of_indirect_tries"].text_input.text
         is_indirect_disabled = self.ids["number_of_indirect_tries"].disabled
-        if quality_set \
-                and (is_lucid_disabled or (lucid_number and not is_lucid_disabled)) \
-                and (is_indirect_disabled or (indirect_number and not is_indirect_disabled)):
-                if (not is_lucid_disabled and lucid_number) or (not is_indirect_disabled and indirect_number):
-                    self.create_lucid_and_indirect_screens()
-                self.manager.switch_to(self.next_screen, direction="left")
-                return
         content = []
         if not quality_set:
             content.append('Укажите качество сна')
-        if not lucid_number and not is_lucid_disabled:
+        if is_indirect_disabled or indirect_text:
+            self.do_something_indirect()
+            if is_lucid_disabled or lucid_text:
+                self.do_something_lucid()
+            return
+        if not lucid_text and not is_lucid_disabled:
             content.append('Укажите количество осознаний во сне')
-        if not indirect_number and not is_indirect_disabled:
+        if not indirect_text and not is_indirect_disabled:
             content.append('Укажите количество непрямых попыток')
         self.show_popup(*content)
+
+    def do_something_lucid(self):
+        pass
+
+    def do_something_indirect(self):
+        pass
 
     def switch_lucid(self, on_off):
         self.ids["number_of_lucid_dreams"].disabled = not on_off
@@ -218,35 +222,6 @@ class LucidScreen(ScreenTemplate):
         if self.ids["number_of_indirect_tries"].text_input.text:
             return_dict["indirect_number"] = int(self.ids["number_of_indirect_tries"].text_input.text)
         return return_dict
-
-    def create_lucid_and_indirect_screens(self):
-        lucid_text = self.ids["number_of_lucid_dreams"].text_input.text
-        indirect_text = self.ids["number_of_indirect_tries"].text_input.text
-        last_screen = self.manager.get_last_screen()
-        if lucid_text and indirect_text:
-            lucid_tuple = self.create_screens("lucid", int(lucid_text))
-            indirect_tuple = self.create_screens("lucid", int(indirect_text))
-            self.next_screen = lucid_tuple[0]
-            lucid_tuple[0].prev_screen = self
-            lucid_tuple[1].next_screen = indirect_tuple[0]
-            indirect_tuple[0].prev_screen = lucid_tuple[1]
-            indirect_tuple[1].next_screen = last_screen
-            last_screen.prev_screen = indirect_tuple[1]
-        elif lucid_text:
-            lucid_tuple = self.create_screens("lucid", int(lucid_text))
-            lucid_tuple[0].prev_screen = self
-            self.next_screen = lucid_tuple[0]
-            lucid_tuple[1].next_screen = last_screen
-            last_screen.prev_screen = lucid_tuple[1]
-        elif indirect_text:
-            indirect_tuple = self.create_screens("lucid", int(indirect_text))
-            indirect_tuple[0].prev_screen = self
-            self.next_screen = indirect_tuple[0]
-            indirect_text[1].next_screen = last_screen
-            last_screen.prev_screen = indirect_tuple[1]
-        else:
-            self.next_screen = last_screen
-            last_screen.prev_screen = self
 
 
 class IndirectScreen(ScreenTemplate):
