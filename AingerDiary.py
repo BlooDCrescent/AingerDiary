@@ -337,9 +337,20 @@ class AskWidget(BoxLayout):
         Clock.schedule_once(self.after_init, 0.01)
 
     def after_init(self, *args):
-        self.check_box.bind(active=self.on_checkbox_active)
+        self.check_box.bind(active=self.is_checked_change)
+        self.bind(is_checked=self.is_checked_change)
         self.is_checked = False
         self.ids["label"].text = self.label_text
+
+    def is_checked_change(self, widget, value):
+        if value:
+            self.is_checked = True
+            if widget is not self.check_box:
+                self.check_box.active = True
+        else:
+            self.is_checked = False
+            if widget is not self.check_box:
+                self.check_box.active = False
 
     def on_checkbox_active(self, *args):
         if self.check_box.active:
