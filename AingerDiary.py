@@ -42,21 +42,19 @@ class ScreenTemplate(Screen):
 
     def create_screens(self, screen_type, count):
         types = {"straight": ExitScreen, "lucid": ExitScreen, "indirect": IndirectScreen}
-        type_names = {"straight": "Прямой выход", "lucid": "Осознание во сне", "indirect":""}
+        type_names = {"straight": "Прямой выход", "lucid": "Осознание во сне", "indirect": ""}
         to_remove = []
         for screen in self.manager.custom_screens:
-            if screen.startswith(screen_type) and not screen == screen_type:
+            if screen.startswith(screen_type) and not (screen == screen_type):
                 to_remove.append(screen)
         for screen in to_remove:
-            self.manager.custom_screens.pop(screen_type, None)
-
+            self.manager.custom_screens.pop(screen, None)
         return_screen = new_screen = types[screen_type](name=screen_type + "0", screen_type=type_names[screen_type])
-        # self.next_screen = new_screen
         self.manager.custom_screens[new_screen.name] = new_screen
         new_screen.prev_screen = self
         last_screen = new_screen
         for i in range(0, count - 1):
-            new_screen = types[screen_type](name=screen_type + str(i + 1), screen_type=type_names[screen_type])
+            new_screen = types[screen_type](name=(screen_type + str(i + 1)), screen_type=type_names[screen_type])
             new_screen.prev_screen = last_screen
             last_screen.next_screen = new_screen
             last_screen = new_screen
@@ -117,21 +115,15 @@ class TechniqueScreen(ScreenTemplate):
             self.stack_usage[number] = True
         else:
             self.stack_usage[number] = False
-        print("<<START>>")
-        print(self.stack_usage)
-        print(len(self.stack_usage))
-        print(self.stack)
         for i in range(0, len(self.stack_usage)):
             if self.stack_usage[i]:
-                print("i=", i)
                 self.next_screen = self.stack[i]
+                self.stack[i].prev_screen = self
                 break
             self.next_screen = None
         if number:
             self.manager.set_lucid(self.ids["ask_lucid"].is_checked)
             self.manager.set_indirect(self.ids["ask_indirect"].is_checked)
-        print(self.next_screen)
-        print("<<STOP>>")
 
     def collect_data(self):
         return_dict = dict()
@@ -210,6 +202,9 @@ class LucidScreen(ScreenTemplate):
         content = []
         if not quality_set:
             content.append('Укажите качество сна')
+        else:
+            self.next_screen = self.manager.get_last_screen()
+            self.next_screen.prev_screen = self
         if is_indirect_disabled or indirect_text:
             self.screen_update(indirect_text, "indirect")
             if is_lucid_disabled or lucid_text:
@@ -261,7 +256,7 @@ class IndirectScreen(ScreenTemplate):
 
     def __init__(self, **kwargs):
         super(IndirectScreen, self).__init__(**kwargs)
-        self.success = False
+        self.have_next_screen = False
 
     def next(self):
         brightness = self.ids["brightness"].text_input.text
@@ -279,20 +274,25 @@ class IndirectScreen(ScreenTemplate):
         self.show_popup(*content)
 
     def prepare_next_screen(self):
-        if self.ids["success_division"].is_checked or self.ids["technique_exit"].is_checked and not self.success:
-            next_screen = ExitScreen("Непрямой выход", name=self.name + "exit")
-            last_screen = self.next_screen
+        is_exit = self.ids["division_exit"].is_checked or self.ids["technique_exit"].is_checked
+        if is_exit and self.have_next_screen:
+            pass
+        elif is_exit:
+            screen = ExitScreen(screen_type="Непрямой выход", name=self.name+"exit")
+            next_screen = self.next_screen
+            next_screen.prev_screen = screen
+            screen.next_screen = next_screen
+            self.next_screen = screen
+            screen.prev_screen = self
+            self.manager.custom_screens[screen.name] = screen
+            self.have_next_screen = True
+        elif self.have_next_screen:
+            screen = self.next_screen
+            next_screen = screen.next_screen
             self.next_screen = next_screen
             next_screen.prev_screen = self
-            last_screen.prev_screen = next_screen
-            next_screen.next_screen = last_screen
-            self.success = True
-        elif self.success:
-            self.success = False
-            last_screen = self.next_screen.next_screen
-            del self.manager.custom_screens[self.name + "exit"]
-            self.next_screen = last_screen
-            last_screen.prev_screen = self
+            self.manager.custom_screens.pop(screen.name)
+            self.have_next_screen = False
         else:
             pass
 
@@ -316,10 +316,35 @@ class IndirectScreen(ScreenTemplate):
 
 
 class ExitScreen(ScreenTemplate):
+    repetition = NumericProperty()
 
     def __init__(self, **kwargs):
         super(ExitScreen, self).__init__(**kwargs)
         self.ids["screen_type"].text = kwargs["screen_type"]
+        self.ids["was_repeated_success"].bind(is_checked=self.repeated_exit_changed)
+
+    def find_last_screen(self):
+        if "repeated" not in self.next_screen.name:
+            return self.next_screen
+        else:
+            return self.next_screen.find_last_screen()
+
+    def repeated_exit_changed(self, widget, value):
+        if value:
+            screen = ExitScreen(screen_type="Повторный выход",
+                                name=self.name+"repeated",
+                                repetition=(self.repetition + 1))
+            next_screen = self.next_screen
+            self.next_screen = screen
+            screen.prev_screen = self
+            screen.next_screen = next_screen
+            next_screen.prev_screen = screen
+            self.manager.custom_screens[screen.name] = screen
+        else:
+            next_screen = self.find_last_screen()
+            self.next_screen = next_screen
+            next_screen.prev_screen = self
+
 
 
 class EndScreen(ScreenTemplate):
@@ -415,7 +440,6 @@ class WindowManager(ScreenManager):
         self.connection = sqlite3.connect(base_path)
 
     def set_lucid(self, is_enabled):
-        print(self.custom_screens)
         self.custom_screens["lucid"].ids["number_of_lucid_dreams"].disabled = not is_enabled
 
     def set_indirect(self, is_enabled):
