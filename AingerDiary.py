@@ -6,8 +6,9 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
+import Calendar
 # from kivy.uix.widget import Widget
-# from kivy.garden.graph import Graph, MeshLinePlot
+from graph import Graph, MeshLinePlot
 # from datetime import date
 from kivy.properties import ObjectProperty, StringProperty, BooleanProperty, NumericProperty
 from functools import partial
@@ -253,7 +254,7 @@ class LucidScreen(ScreenTemplate):
 
 
 class IndirectScreen(ScreenTemplate):
-
+    #TODO сделать отслеживание чекбоксов, чтобы включались/отключались другие опции
     def __init__(self, **kwargs):
         super(IndirectScreen, self).__init__(**kwargs)
         self.have_next_screen = False
