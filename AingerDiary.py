@@ -258,6 +258,27 @@ class IndirectScreen(ScreenTemplate):
     def __init__(self, **kwargs):
         super(IndirectScreen, self).__init__(**kwargs)
         self.have_next_screen = False
+        self.after_init()
+
+    def after_init(self):
+        self.ids["try_division"].bind(is_checked=partial(self.switch_widget_disability,
+                                                         ["division_exit"], False))
+        self.ids["undesired_asleep"].bind(is_checked=partial(self.switch_widget_disability,
+                                                             ["desired_asleep"], True))
+        self.ids["desired_asleep"].bind(is_checked=partial(self.switch_widget_disability,
+                                                           ["undesired_asleep"], True))
+        self.ids["division_exit"].bind(
+            is_checked=partial(self.switch_widget_disability,
+                               ["number_of_cycles", "technique_exit", "undesired_asleep", "desired_asleep"], True))
+        self.ids["technique_exit"].bind(is_checked=partial(self.switch_widget_disability,
+                                                           ["desired_asleep", "undesired_asleep"], True))
+
+    def switch_widget_disability(self, names, direction, widget, value):
+        for name in names:
+            if direction:
+                self.ids[name].disabled = value
+            else:
+                self.ids[name].disabled = not value
 
     def next(self):
         brightness = self.ids["brightness"].text_input.text
@@ -494,7 +515,8 @@ class AingerDiaryApp(App):
         self.sm.custom_screens["indirect"] = (IndirectScreen(name="indirect",
                                                              prev_screen=self.sm.custom_screens["technique"]))
         self.sm.custom_screens["last"] = (EndScreen(name="last"))
-        self.sm.switch_to(self.sm.custom_screens["main_menu"])
+        #self.sm.switch_to(self.sm.custom_screens["main_menu"])
+        self.sm.switch_to(self.sm.custom_screens["indirect"])
         return self.sm
 
 
