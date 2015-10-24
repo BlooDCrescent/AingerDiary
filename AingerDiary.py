@@ -259,26 +259,45 @@ class IndirectScreen(ScreenTemplate):
         super(IndirectScreen, self).__init__(**kwargs)
         self.have_next_screen = False
         self.after_init()
+        self.disabled_dict = {}
 
     def after_init(self):
-        self.ids["try_division"].bind(is_checked=partial(self.switch_widget_disability,
-                                                         ["division_exit"], False))
-        self.ids["undesired_asleep"].bind(is_checked=partial(self.switch_widget_disability,
-                                                             ["desired_asleep"], True))
-        self.ids["desired_asleep"].bind(is_checked=partial(self.switch_widget_disability,
-                                                           ["undesired_asleep"], True))
-        self.ids["division_exit"].bind(
-            is_checked=partial(self.switch_widget_disability,
-                               ["number_of_cycles", "technique_exit", "undesired_asleep", "desired_asleep"], True))
-        self.ids["technique_exit"].bind(is_checked=partial(self.switch_widget_disability,
-                                                           ["desired_asleep", "undesired_asleep"], True))
+        self.ids["try_division"].bind(is_checked=self.switch_everything)
+        self.ids["undesired_asleep"].bind(is_checked=self.switch_everything)
+        self.ids["desired_asleep"].bind(is_checked=self.switch_everything)
+        self.ids["division_exit"].bind(is_checked=self.switch_everything)
+        self.ids["technique_exit"].bind(is_checked=self.switch_everything)
 
-    def switch_widget_disability(self, names, direction, widget, value):
-        for name in names:
-            if direction:
-                self.ids[name].disabled = value
+    def switch_everything(self, widget, value):
+        try_division = self.ids["try_division"].is_checked
+        division_exit = self.ids["division_exit"].is_checked
+        div_names = ["number_of_cycles", "technique_exit", "undesired_asleep", "desired_asleep"]
+        technique_exit = self.ids["technique_exit"].is_checked
+        tech_names = ["desired_asleep", "undesired_asleep"]
+        self.ids["division_exit"].disabled = not try_division
+        if not try_division:
+            for name in div_names:
+                self.ids[name].disabled = False
+            if technique_exit:
+                for name in tech_names:
+                    self.ids[name].disabled = technique_exit
             else:
-                self.ids[name].disabled = not value
+                self.ids["desired_asleep"].disabled = self.ids["undesired_asleep"].is_checked
+                self.ids["undesired_asleep"].disabled = self.ids["desired_asleep"].is_checked
+            return
+        self.ids["undesired_asleep"].disabled = self.ids["desired_asleep"].is_checked
+        self.ids["desired_asleep"].disabled = self.ids["undesired_asleep"].is_checked
+        if division_exit:
+            for name in div_names:
+                self.ids[name].disabled = division_exit
+        else:
+            self.ids["number_of_cycles"].disabled = self.ids["technique_exit"].disabled = False
+            if technique_exit:
+                for name in tech_names:
+                    self.ids[name].disabled = technique_exit
+            else:
+                self.ids["desired_asleep"].disabled = self.ids["undesired_asleep"].is_checked
+                self.ids["undesired_asleep"].disabled = self.ids["desired_asleep"].is_checked
 
     def next(self):
         brightness = self.ids["brightness"].text_input.text
