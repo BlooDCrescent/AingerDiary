@@ -254,7 +254,6 @@ class LucidScreen(ScreenTemplate):
 
 
 class IndirectScreen(ScreenTemplate):
-    #TODO сделать отслеживание чекбоксов, чтобы включались/отключались другие опции
     def __init__(self, **kwargs):
         super(IndirectScreen, self).__init__(**kwargs)
         self.have_next_screen = False
@@ -534,9 +533,9 @@ class AingerDiaryApp(App):
         self.sm.custom_screens["indirect"] = (IndirectScreen(name="indirect",
                                                              prev_screen=self.sm.custom_screens["technique"]))
         self.sm.custom_screens["last"] = (EndScreen(name="last"))
-        #self.sm.switch_to(self.sm.custom_screens["main_menu"])
-        self.sm.switch_to(self.sm.custom_screens["indirect"])
-        return self.sm
+        # self.sm.switch_to(self.sm.custom_screens["main_menu"])
+        # return self.sm
+        return ExitScreen(screen_type="тестовый выход", name="new_exit_screen", next_screen=self.sm.custom_screens["indirect"], manager=self.sm)
 
 
 if __name__ == '__main__':
