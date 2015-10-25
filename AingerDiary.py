@@ -393,6 +393,10 @@ class ExitScreen(ScreenTemplate):
             next_screen.prev_screen = self
 
 
+class GetStatisticsScreen(ScreenTemplate):
+    pass
+
+
 class EndScreen(ScreenTemplate):
     pass
 
