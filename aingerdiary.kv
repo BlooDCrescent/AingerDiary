@@ -281,7 +281,12 @@
         orientation: 'vertical'
         BoxLayout:
             orientation: 'horizontal'
-            Bu
+            Button:
+                text: "Назад"
+                on_press: root.prev()
+            Button:
+                text: "Подтвердить"
+                on_press: root.next()
 
 
 <EndScreen>:

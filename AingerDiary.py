@@ -16,6 +16,7 @@ import sqlite3
 import os
 
 __author__ = "Unencrypted"
+connection = None
 
 
 class ScreenTemplate(Screen):
@@ -357,10 +358,20 @@ class IndirectScreen(ScreenTemplate):
 
 class ExitScreen(ScreenTemplate):
     repetition = NumericProperty()
+    type = NumericProperty()
 
     def __init__(self, **kwargs):
         super(ExitScreen, self).__init__(**kwargs)
-        self.ids["screen_type"].text = kwargs["screen_type"]
+        screen_type = kwargs["screen_type"]
+        self.ids["screen_type"].text = screen_type
+        if screen_type == "Прямой выход":
+            self.type = 0
+        elif screen_type == "Осознание во сне":
+            self.type = 1
+        elif screen_type == "Непрямой выход":
+            self.type = 2
+        elif screen_type == "Повторный выход":
+            self.type = 3
         self.ids["was_repeated_success"].bind(is_checked=self.repeated_exit_changed)
         self.after_init()
 
@@ -394,7 +405,22 @@ class ExitScreen(ScreenTemplate):
 
 
 class GetStatisticsScreen(ScreenTemplate):
-    pass
+    # TODO написать логику взаимодействия с базой данных
+    def next(self):
+        screen = self.manager.custom_screens["technique"]
+        cursor = connection.cursor()
+        command = "BEGIN TRANSACTION"
+        cursor.execute(command)
+        while screen != self:
+            if "exit" in screen.name:
+                pass
+            elif "indirect" in screen.name:
+                pass
+            elif "lucid" in screen.name:
+                pass
+            screen = screen.next_screen
+        command = "COMMIT TRANSACTION"
+        cursor.execute(command)
 
 
 class EndScreen(ScreenTemplate):
@@ -476,7 +502,6 @@ class AskNumWidget(AskTextWidget):
 
 
 class WindowManager(ScreenManager):
-    connection = None
     num_wakes = 0
     custom_screens = {}
     straight_present = False
@@ -485,9 +510,10 @@ class WindowManager(ScreenManager):
     indirect_present = False
 
     def __init__(self):
+        global connection
         super(WindowManager, self).__init__()
         base_path = os.getcwd() + os.sep + "AingerDiary.db"
-        self.connection = sqlite3.connect(base_path)
+        connection = sqlite3.connect(base_path)
 
     def set_lucid(self, is_enabled):
         self.custom_screens["lucid"].ids["number_of_lucid_dreams"].disabled = not is_enabled
@@ -543,8 +569,8 @@ class AingerDiaryApp(App):
         self.sm.custom_screens["indirect"] = (IndirectScreen(name="indirect",
                                                              prev_screen=self.sm.custom_screens["technique"]))
         self.sm.custom_screens["last"] = (EndScreen(name="last"))
-        # self.sm.switch_to(self.sm.custom_screens["main_menu"])
-        self.sm.switch_to(self.sm.custom_screens["indirect"])
+        self.sm.switch_to(self.sm.custom_screens["main_menu"])
+        # self.sm.switch_to(self.sm.custom_screens["indirect"])
         return self.sm
         #return ExitScreen(screen_type="тестовый выход", name="new_exit_screen", next_screen=self.sm.custom_screens["indirect"], manager=self.sm)
 
