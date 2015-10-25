@@ -35,11 +35,20 @@
     check_box: check_box
     orientation: 'horizontal'
     Label:
-        id: label
-        size_hint_x: 0.9
+        text: ""
+        size_hint_x: 0.2
     CheckBox:
         id: check_box
         size_hint_x: 0.1
+    Label:
+        id: label
+        text_size: self.size
+        halign: 'justify'
+        valign: 'middle'
+        size_hint_x: 0.4
+    Label:
+        size_hint_x: 0.2
+        text: ""
 
 
 <AskTextWidget>:
@@ -89,22 +98,55 @@
             text: "Укажите тип прямых техник"
         GridLayout:
             rows: 3
-            cols: 2
+            cols: 4
+            Label:
+                text: ''
+                size_hint_x: 0.4
             CheckBox:
                 id: cycle
                 group: 1
+                size_hint_x: 0.1
             Label:
                 text: "Циклирование"
+                text_size: self.size
+                halign: 'justify'
+                valign: 'middle'
+                size_hint_x: 0.4
+            Label:
+                text: ''
+                size_hint_x: 0.2
+            Label:
+                text: ''
+                size_hint_x: 0.4
             CheckBox:
                 id: alternation
                 group: 1
+                size_hint_x: 0.1
             Label:
                 text: "Чередование"
+                text_size: self.size
+                halign: 'justify'
+                valign: 'middle'
+                size_hint_x: 0.4
+            Label:
+                text: ''
+                size_hint_x: 0.2
+            Label:
+                text: ''
+                size_hint_x: 0.4
             CheckBox:
                 id: one_technique
                 group: 1
+                size_hint_x: 0.1
             Label:
                 text: "Одна техника"
+                text_size: self.size
+                halign: 'justify'
+                valign: 'middle'
+                size_hint_x: 0.4
+            Label:
+                text: ''
+                size_hint_x: 0.2
         AskWidget:
             id: straight_success
             label_text: "Были ли прямые техники успешны?"
