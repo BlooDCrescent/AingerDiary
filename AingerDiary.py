@@ -362,6 +362,13 @@ class ExitScreen(ScreenTemplate):
         super(ExitScreen, self).__init__(**kwargs)
         self.ids["screen_type"].text = kwargs["screen_type"]
         self.ids["was_repeated_success"].bind(is_checked=self.repeated_exit_changed)
+        self.after_init()
+
+    def after_init(self):
+        self.ids["was_repeated_try"].bind(is_checked=self.change_repeated_success)
+
+    def change_repeated_success(self, widget, value):
+        self.ids["was_repeated_success"].disabled = not value
 
     def find_last_screen(self):
         if "repeated" not in self.next_screen.name:
@@ -384,7 +391,6 @@ class ExitScreen(ScreenTemplate):
             next_screen = self.find_last_screen()
             self.next_screen = next_screen
             next_screen.prev_screen = self
-
 
 
 class EndScreen(ScreenTemplate):
