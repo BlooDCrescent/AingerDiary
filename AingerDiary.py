@@ -413,7 +413,14 @@ class GetStatisticsScreen(ScreenTemplate):
         cursor.execute(command)
         while screen != self:
             if "exit" in screen.name:
-                pass
+                if screen.type == 0:
+                    pass
+                elif screen.type == 1:
+                    pass
+                elif screen.type == 2:
+                    pass
+                else:
+                    pass
             elif "indirect" in screen.name:
                 pass
             elif "lucid" in screen.name:
