@@ -289,6 +289,7 @@ class IndirectScreen(ScreenTemplate):
         self.ids["desired_asleep"].disabled = self.ids["undesired_asleep"].is_checked
         if division_exit:
             for name in div_names:
+
                 self.ids[name].disabled = division_exit
         else:
             self.ids["number_of_cycles"].disabled = self.ids["technique_exit"].disabled = False
@@ -408,26 +409,24 @@ class GetStatisticsScreen(ScreenTemplate):
     # TODO написать логику взаимодействия с базой данных
     def next(self):
         screen = self.manager.custom_screens["technique"]
+        command = ""
         cursor = connection.cursor()
-        command = "BEGIN TRANSACTION"
-        cursor.execute(command)
         while screen != self:
             if "exit" in screen.name:
-                if screen.type == 0:
+                if screen.type == 0:  # straight
                     pass
-                elif screen.type == 1:
+                elif screen.type == 1:  # lucid
                     pass
-                elif screen.type == 2:
+                elif screen.type == 2:  # indirect
                     pass
-                else:
-                    pass
+                else:  # repeated
+                    command = "SELECT last_insert_rowid()"
+                    cursor.execute(command)
             elif "indirect" in screen.name:
                 pass
             elif "lucid" in screen.name:
                 pass
             screen = screen.next_screen
-        command = "COMMIT TRANSACTION"
-        cursor.execute(command)
 
 
 class EndScreen(ScreenTemplate):
