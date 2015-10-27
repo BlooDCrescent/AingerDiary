@@ -411,6 +411,35 @@ class GetStatisticsScreen(ScreenTemplate):
         screen = self.manager.custom_screens["technique"]
         command = ""
         cursor = connection.cursor()
+        aggression_text = self.ids["aggression"].text_input.text
+        mechanic_text = self.ids["mechanic"].text_input.text
+        confidence_text = self.ids["confidence"].text_input.text
+        at_all_costs_text = self.ids["at_all_costs"].text_input.text
+        intention_text = self.ids["intention"].text_input.text
+        if not (aggression_text and mechanic_text and
+                confidence_text and at_all_costs_text and intention_text):
+            content = []
+            if not aggression_text:
+                content.append("Укажите значение агрессии")
+            if not mechanic_text:
+                content.append("Укажите значение механичности")
+            if not confidence_text:
+                content.append("Укажите значение уверенности")
+            if not at_all_costs_text:
+                content.append("Укажите значение \"во что бы то ни стало\"")
+            if not intention_text:
+                content.append("Укажите значение намерения выйти в фазу")
+            self.show_popup(*content)
+            return
+        aggression = int(aggression_text)
+        mechanic = int(mechanic_text)
+        confidence = int(confidence_text)
+        at_all_costs = int(at_all_costs_text)
+        intention = int(intention_text)
+        command = "INSERT INTO  global_try (intention, confidence, aggression, mecha, at_all_costs) VALUES (?, ?, ?, ?, ?)"
+        cursor.execute(command, intention, confidence, aggression, mechanic, at_all_costs)
+        cursor.execute("SELECT last_insert_rowid()")
+        global_try_id = cursor.fetchone()
         while screen != self:
             last_id = None
             if "exit" in screen.name:
