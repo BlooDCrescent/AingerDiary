@@ -412,6 +412,7 @@ class GetStatisticsScreen(ScreenTemplate):
         command = ""
         cursor = connection.cursor()
         while screen != self:
+            last_id = None
             if "exit" in screen.name:
                 if screen.type == 0:  # straight
                     pass
@@ -422,6 +423,8 @@ class GetStatisticsScreen(ScreenTemplate):
                 else:  # repeated
                     command = "SELECT last_insert_rowid()"
                     cursor.execute(command)
+                    last_id = cursor.fetchone()
+
             elif "indirect" in screen.name:
                 pass
             elif "lucid" in screen.name:
