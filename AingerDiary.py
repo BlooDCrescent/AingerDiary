@@ -431,34 +431,64 @@ class GetStatisticsScreen(ScreenTemplate):
                 content.append("Укажите значение намерения выйти в фазу")
             self.show_popup(*content)
             return
+        sleep_quality = None
         aggression = int(aggression_text)
         mechanic = int(mechanic_text)
         confidence = int(confidence_text)
         at_all_costs = int(at_all_costs_text)
         intention = int(intention_text)
-        command = "INSERT INTO  global_try (intention, confidence, aggression, mecha, at_all_costs) VALUES (?, ?, ?, ?, ?)"
-        cursor.execute(command, intention, confidence, aggression, mechanic, at_all_costs)
+        command = "INSERT INTO  global_try (intention, confidence, aggression, mecha, at_all_costs)" \
+                  " VALUES (?, ?, ?, ?, ?)"
+        cursor.execute(command, (intention, confidence, aggression, mechanic, at_all_costs))
         cursor.execute("SELECT last_insert_rowid()")
         global_try_id = cursor.fetchone()
+        indirect_id = None
         while screen != self:
-            last_id = None
             if "exit" in screen.name:
+                exit_id = None
+                tech_type = None
+                deepening = screen.ids["was_deepening"].is_checked
+                holding = screen.ids["was_holding"].is_checked
+                plan_done = int(screen.ids["items_done"].text_input.text)
+                catch_try = screen.ids["was_catch"].is_checked
+                repeated = screen.ids["was_repeated_try"].is_checked
+                indirect_id = None
                 if screen.type == 0:  # straight
-                    pass
+                    tech_type = 0
                 elif screen.type == 1:  # lucid
-                    pass
+                    tech_type = 1
                 elif screen.type == 2:  # indirect
-                    pass
+                    tech_type = 2
                 else:  # repeated
+                    tech_type = "repeated"
                     command = "SELECT last_insert_rowid()"
                     cursor.execute(command)
-                    last_id = cursor.fetchone()
-
+                    exit_id = cursor.fetchone()
+                command = "INSERT INTO exits (type, global_try_id, exit_id, deepening," \
+                          " holding, plan_done, catch_try, repeated, indirect_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                cursor.execute(command, (tech_type, global_try_id, exit_id,
+                                         deepening, holding, plan_done, catch_try, repeated, indirect_id))
             elif "indirect" in screen.name:
-                pass
+                brightness = int(screen.ids["brightness"].text_input.text)
+                moving = screen.ids["was_moving"].is_checked
+                division = screen.ids["try_division"].is_checked
+                num_cycles = int(screen.ids["number_of_cycles"].text_input.text)
+                sleep_char = None
+                if self.ids["undesired_asleep"].is_checked:
+                    sleep_char = 0
+                elif self.ids["desired_asleep"].is_checked:
+                    sleep_char = 1
+                else:
+                    sleep_char = 2
+                command = "INSERT INTO indirect_try (global_try_id, brightness, moving," \
+                          " division, num_cycles, sleep_char) VALUES(?, ?, ?, ?, ?, ?)"
+                cursor.execute(command, (global_try_id, brightness, moving, division, num_cycles, sleep_char))
+                cursor.execute("SELECT last_insert_rowid()")
+                indirect_id = cursor.fetchone()
             elif "lucid" in screen.name:
-                pass
+                sleep_quality = int(screen.ids["dream_quality"].text_input.text)
             screen = screen.next_screen
+        cursor.commit()
 
 
 class EndScreen(ScreenTemplate):
