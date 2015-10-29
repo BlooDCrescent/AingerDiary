@@ -51,12 +51,12 @@ class ScreenTemplate(Screen):
                 to_remove.append(screen)
         for screen in to_remove:
             self.manager.custom_screens.pop(screen, None)
-        return_screen = new_screen = types[screen_type](name=screen_type + "0", screen_type=type_names[screen_type])
+        return_screen = new_screen = types[screen_type](name=screen_type + "0exit", screen_type=type_names[screen_type])
         self.manager.custom_screens[new_screen.name] = new_screen
         new_screen.prev_screen = self
         last_screen = new_screen
         for i in range(0, count - 1):
-            new_screen = types[screen_type](name=(screen_type + str(i + 1)), screen_type=type_names[screen_type])
+            new_screen = types[screen_type](name=(screen_type + str(i + 1)+"exit"), screen_type=type_names[screen_type])
             new_screen.prev_screen = last_screen
             last_screen.next_screen = new_screen
             last_screen = new_screen
@@ -152,12 +152,12 @@ class StraightScreen(ScreenTemplate):
                         or self.ids["alternation"].active \
                         or self.ids["one_technique"].active
         num_success_set = self.ids["straight_success"].is_checked \
-                          and self.ids["straight_success_count"].text_input.text \
+                          and self.ids["straight_success_count"].text \
                           or not self.ids["straight_success"].is_checked
         if technique_set and num_success_set:
             last_screen = self
-            if self.ids["straight_success_count"].text_input.text and self.ids["straight_success"].is_checked:
-                tuple_screens = self.create_screens("straight", int(self.ids["straight_success_count"].text_input.text))
+            if self.ids["straight_success_count"].text and self.ids["straight_success"].is_checked:
+                tuple_screens = self.create_screens("straight", int(self.ids["straight_success_count"].text))
                 last_screen = tuple_screens[1]
                 self.next_screen = tuple_screens[0]
                 tuple_screens[0].prev_screen = self
@@ -183,7 +183,7 @@ class StraightScreen(ScreenTemplate):
             return_dict["type"] = "one"
         if self.ids["straight_success"].is_checked:
             return_dict["success"] = True
-            return_dict["number"] = int(self.ids["straight_success_count"].text_input.text)
+            return_dict["number"] = int(self.ids["straight_success_count"].text)
         else:
             return_dict["success"] = False
         return return_dict
@@ -196,10 +196,10 @@ class LucidScreen(ScreenTemplate):
         self.in_out = True
 
     def next(self):
-        quality_set = self.ids["dream_quality"].text_input.text
-        lucid_text = self.ids["number_of_lucid_dreams"].text_input.text
+        quality_set = self.ids["dream_quality"].text
+        lucid_text = self.ids["number_of_lucid_dreams"].text
         is_lucid_disabled = self.ids["number_of_lucid_dreams"].disabled
-        indirect_text = self.ids["number_of_indirect_tries"].text_input.text
+        indirect_text = self.ids["number_of_indirect_tries"].text
         is_indirect_disabled = self.ids["number_of_indirect_tries"].disabled
         content = []
         if not quality_set:
@@ -222,9 +222,9 @@ class LucidScreen(ScreenTemplate):
     def on_enter(self, *args):
         self.next_screen = self.manager.get_last_screen()
         if self.in_out:
-            self.ids["dream_quality"].text_input.text = \
-                self.ids["number_of_lucid_dreams"].text_input.text = \
-                self.ids["number_of_indirect_tries"].text_input.text = ""
+            self.ids["dream_quality"].text = \
+                self.ids["number_of_lucid_dreams"].text = \
+                self.ids["number_of_indirect_tries"].text = ""
         self.in_out = not self.in_out
 
     def screen_update(self, text, screen_type):
@@ -246,11 +246,11 @@ class LucidScreen(ScreenTemplate):
 
     def collect_data(self):
         return_dict = dict()
-        return_dict["quality"] = self.ids["dream_quality"].text_input.text
-        if self.ids["number_of_lucid_dreams"].text_input.text:
-            return_dict["lucid_number"] = int(self.ids["number_of_lucid_dreams"].text_input.text)
-        if self.ids["number_of_indirect_tries"].text_input.text:
-            return_dict["indirect_number"] = int(self.ids["number_of_indirect_tries"].text_input.text)
+        return_dict["quality"] = self.ids["dream_quality"].text
+        if self.ids["number_of_lucid_dreams"].text:
+            return_dict["lucid_number"] = int(self.ids["number_of_lucid_dreams"].text)
+        if self.ids["number_of_indirect_tries"].text:
+            return_dict["indirect_number"] = int(self.ids["number_of_indirect_tries"].text)
         return return_dict
 
 
@@ -301,8 +301,8 @@ class IndirectScreen(ScreenTemplate):
                 self.ids["undesired_asleep"].disabled = self.ids["desired_asleep"].is_checked
 
     def next(self):
-        brightness = self.ids["brightness"].text_input.text
-        cycles_text = self.ids["number_of_cycles"].text_input.text
+        brightness = self.ids["brightness"].text
+        cycles_text = self.ids["number_of_cycles"].text
         num_cycles = cycles_text or cycles_text == "0"
         if brightness and num_cycles:
             self.prepare_next_screen()
@@ -340,14 +340,14 @@ class IndirectScreen(ScreenTemplate):
 
     def collect_data(self):
         return_dict = dict()
-        return_dict.brightness = int(self.ids["brightness"].text_input.text)
+        return_dict.brightness = int(self.ids["brightness"].text)
         return_dict.move = self.ids["was_moving"].is_checked
         return_dict.division = self.ids["try_division"].is_checked
         if return_dict.division:
             return_dict.success_division = self.ids["success_division"].is_checked
             if return_dict.success_division:
                 return return_dict
-        return_dict.num_cycles = int(self.ids["number_of_cycles"].text_input.text)
+        return_dict.num_cycles = int(self.ids["number_of_cycles"].text)
         return_dict.tech_exit = self.ids["technique_exit"].is_checked
         if return_dict.tech_exit:
             return return_dict
@@ -382,6 +382,13 @@ class ExitScreen(ScreenTemplate):
     def change_repeated_success(self, widget, value):
         self.ids["was_repeated_success"].disabled = not value
 
+    def next(self):
+        if not self.ids["items_done"].text:
+            self.show_popup("Укажите количество выполненных пунктов плана действий")
+            return
+        else:
+            self.manager.switch_to(self.next_screen, direction="right")
+
     def find_last_screen(self):
         if "repeated" not in self.next_screen.name:
             return self.next_screen
@@ -407,15 +414,24 @@ class ExitScreen(ScreenTemplate):
 
 class GetStatisticsScreen(ScreenTemplate):
     # TODO написать логику взаимодействия с базой данных
-    def next(self):
-        screen = self.manager.custom_screens["technique"]
-        command = ""
-        cursor = connection.cursor()
-        aggression_text = self.ids["aggression"].text_input.text
-        mechanic_text = self.ids["mechanic"].text_input.text
-        confidence_text = self.ids["confidence"].text_input.text
-        at_all_costs_text = self.ids["at_all_costs"].text_input.text
-        intention_text = self.ids["intention"].text_input.text
+
+    def __init__(self, **kwargs):
+        super(GetStatisticsScreen, self).__init__(**kwargs)
+        self.aggression = None
+        self.mechanic = None
+        self.confidence = None
+        self.at_all_costs = None
+        self.intention = None
+
+    def get_basic_variables(self):
+        aggression_text = self.ids["aggression"].text
+        mechanic_text = self.ids["mechanic"].text
+        confidence_text = self.ids["confidence"].text
+        at_all_costs_text = self.ids["at_all_costs"].text
+        intention_text = self.ids["intention"].text
+        return self.calculate_popup(aggression_text, mechanic_text, confidence_text, at_all_costs_text, intention_text)
+
+    def calculate_popup(self, aggression_text, mechanic_text, confidence_text, at_all_costs_text, intention_text):
         if not (aggression_text and mechanic_text and
                 confidence_text and at_all_costs_text and intention_text):
             content = []
@@ -430,29 +446,48 @@ class GetStatisticsScreen(ScreenTemplate):
             if not intention_text:
                 content.append("Укажите значение намерения выйти в фазу")
             self.show_popup(*content)
+            return False
+        else:
+            self.aggression = int(aggression_text)
+            self.mechanic = int(mechanic_text)
+            self.confidence = int(confidence_text)
+            self.at_all_costs = int(at_all_costs_text)
+            self.intention = int(intention_text)
+            return True
+
+    def on_enter(self, *args):
+        self.intention = self.at_all_costs = self.aggression = self.confidence = self.mechanic = None
+        self.ids["aggression"].text = self.ids["mechanic"].text = self.ids["confidence"].text = \
+            self.ids["at_all_costs"].text = self.ids["intention"].text = ""
+
+    def insert_global_try(self, cursor):
+        date = self.manager.custom_screens["ask_date"].ids["pick"].date.isoformat()
+        command = "INSERT INTO  global_try (intention, confidence, aggression, mecha, at_all_costs, date)" \
+                  " VALUES (?, ?, ?, ?, ?, ?)"
+        cursor.execute(command, (self.intention, self.confidence, self.aggression,
+                                 self.mechanic, self.at_all_costs, date))
+
+    def next(self):
+        if not self.get_basic_variables():
             return
+        cursor = connection.cursor()
+        screen = self.manager.custom_screens["technique"]
+        command = ""
         sleep_quality = None
-        aggression = int(aggression_text)
-        mechanic = int(mechanic_text)
-        confidence = int(confidence_text)
-        at_all_costs = int(at_all_costs_text)
-        intention = int(intention_text)
-        command = "INSERT INTO  global_try (intention, confidence, aggression, mecha, at_all_costs)" \
-                  " VALUES (?, ?, ?, ?, ?)"
-        cursor.execute(command, (intention, confidence, aggression, mechanic, at_all_costs))
-        cursor.execute("SELECT last_insert_rowid()")
-        global_try_id = cursor.fetchone()
         indirect_id = None
+        self.insert_global_try(cursor)
+        cursor.execute("SELECT last_insert_rowid()")
+        global_try_id = cursor.fetchone()[0]
         while screen != self:
             if "exit" in screen.name:
                 exit_id = None
                 tech_type = None
-                deepening = screen.ids["was_deepening"].is_checked
-                holding = screen.ids["was_holding"].is_checked
-                plan_done = int(screen.ids["items_done"].text_input.text)
-                catch_try = screen.ids["was_catch"].is_checked
-                repeated = screen.ids["was_repeated_try"].is_checked
-                indirect_id = None
+                deepening = int(screen.ids["was_deepening"].is_checked)
+                holding = int(screen.ids["was_holding"].is_checked)
+                plan_done = int(screen.ids["items_done"].text)
+                catch_try = int(screen.ids["was_catch"].is_checked)
+                repeated = int(screen.ids["was_repeated_try"].is_checked)
+                indirect_id = -1
                 if screen.type == 0:  # straight
                     tech_type = 0
                 elif screen.type == 1:  # lucid
@@ -460,19 +495,19 @@ class GetStatisticsScreen(ScreenTemplate):
                 elif screen.type == 2:  # indirect
                     tech_type = 2
                 else:  # repeated
-                    tech_type = "repeated"
+                    tech_type = 3
                     command = "SELECT last_insert_rowid()"
                     cursor.execute(command)
-                    exit_id = cursor.fetchone()
+                    exit_id = cursor.fetchone()[0]
                 command = "INSERT INTO exits (type, global_try_id, exit_id, deepening," \
                           " holding, plan_done, catch_try, repeated, indirect_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 cursor.execute(command, (tech_type, global_try_id, exit_id,
                                          deepening, holding, plan_done, catch_try, repeated, indirect_id))
             elif "indirect" in screen.name:
-                brightness = int(screen.ids["brightness"].text_input.text)
+                brightness = int(screen.ids["brightness"].text)
                 moving = screen.ids["was_moving"].is_checked
                 division = screen.ids["try_division"].is_checked
-                num_cycles = int(screen.ids["number_of_cycles"].text_input.text)
+                num_cycles = int(screen.ids["number_of_cycles"].text)
                 sleep_char = None
                 if self.ids["undesired_asleep"].is_checked:
                     sleep_char = 0
@@ -485,10 +520,11 @@ class GetStatisticsScreen(ScreenTemplate):
                 cursor.execute(command, (global_try_id, brightness, moving, division, num_cycles, sleep_char))
                 cursor.execute("SELECT last_insert_rowid()")
                 indirect_id = cursor.fetchone()
-            elif "lucid" in screen.name:
-                sleep_quality = int(screen.ids["dream_quality"].text_input.text)
+            elif screen.name == "lucid":
+                sleep_quality = int(screen.ids["dream_quality"].text)
             screen = screen.next_screen
-        cursor.commit()
+        connection.commit()
+        self.manager.switch_to(self.next_screen, direction="right")
 
 
 class EndScreen(ScreenTemplate):
@@ -521,16 +557,10 @@ class AskWidget(BoxLayout):
             if widget is not self.check_box:
                 self.check_box.active = False
 
-    def on_checkbox_active(self, *args):
-        if self.check_box.active:
-            self.is_checked = True
-        else:
-            self.is_checked = False
-
 
 class AskTextWidget(BoxLayout):
     label_text = StringProperty()
-    text_input = ObjectProperty()
+    text = StringProperty(allownone=True)
 
     def __init__(self, **kwargs):
         super(AskTextWidget, self).__init__(**kwargs)
@@ -538,6 +568,14 @@ class AskTextWidget(BoxLayout):
 
     def after_init(self, *args):
         self.ids["label"].text = self.label_text
+        self.bind(text=self.on_text)
+        self.ids["text_input"].bind(text=self.on_text_input)
+
+    def on_text(self, widget, value):
+        self.ids["text_input"].text = value
+
+    def on_text_input(self, widget, value):
+        self.text = value
 
     def return_text(self):
         return self.ids["text_input"].text
@@ -553,11 +591,11 @@ class AskNumWidget(AskTextWidget):
 
     def after_init(self, *args):
         super(AskNumWidget, self).after_init(*args)
-        self.ids["text_input"].bind(text=self.check)
+        self.bind(text=self.check)
 
     def check(self, *args):
         buffer = ""
-        for character in self.ids["text_input"].text:
+        for character in self.text:
             if character.isdigit():
                 buffer += character
         if buffer:
@@ -566,7 +604,7 @@ class AskNumWidget(AskTextWidget):
             if self.maximum and int(buffer) > self.maximum:
                 buffer = str(self.maximum)
             buffer = str(int(buffer))
-        self.ids["text_input"].text = buffer
+        self.text = buffer
 
 
 class WindowManager(ScreenManager):
@@ -582,6 +620,9 @@ class WindowManager(ScreenManager):
         super(WindowManager, self).__init__()
         base_path = os.getcwd() + os.sep + "AingerDiary.db"
         connection = sqlite3.connect(base_path)
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM sqlite_master")
+        print(cursor.fetchone())
 
     def set_lucid(self, is_enabled):
         self.custom_screens["lucid"].ids["number_of_lucid_dreams"].disabled = not is_enabled
@@ -596,7 +637,7 @@ class WindowManager(ScreenManager):
         self.switch_to(self.custom_screens["ask_date"], direction="left")
 
     def get_last_screen(self):
-        return self.custom_screens["last"]
+        return self.custom_screens["statistics"]
 
     def get_next_screen(self, screen_name):
         data = self.custom_screens["technique"].collect_data()
@@ -604,16 +645,16 @@ class WindowManager(ScreenManager):
             if data["lucid"] or data["indirect"]:
                 return self.custom_screens["lucid"]
             else:
-                return self.custom_screens["last"]
+                return self.get_last_screen()
         if screen_name == "lucid":
             lucid_data = self.custom_screens["lucid"].collect_data()
             if "indirect_number" in lucid_data:
                 screen = self.custom_screens["lucid"].create_indirect_wakes_screens()
                 return screen
             else:
-                return self.custom_screens["last"]
+                return self.get_last_screen()
         if screen_name == "indirect":
-            return self.custom_screens["last"]
+            return self.get_last_screen()
 
 
 class AingerDiaryApp(App):
@@ -637,6 +678,9 @@ class AingerDiaryApp(App):
         self.sm.custom_screens["indirect"] = (IndirectScreen(name="indirect",
                                                              prev_screen=self.sm.custom_screens["technique"]))
         self.sm.custom_screens["last"] = (EndScreen(name="last"))
+        self.sm.custom_screens["statistics"] = GetStatisticsScreen(name="statistics",
+                                                                   prev_screen=self.sm.custom_screens["technique"],
+                                                                   next_screen=self.sm.custom_screens["last"])
         self.sm.switch_to(self.sm.custom_screens["main_menu"])
         # self.sm.switch_to(self.sm.custom_screens["indirect"])
         return self.sm
