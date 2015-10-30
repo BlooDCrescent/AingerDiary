@@ -303,6 +303,22 @@
                 text: "Подтвердить"
                 on_press: root.next()
 
+# TODO написать экран для записи снов в дневник
+<DreamDiaryScreen>:
+    BoxLayout:
+        size_hint: 1, 1
+        orientation: 'vertical'
+        Label:
+            text: "Заглушка для экрана дневника снов"
+        BoxLayout:
+            Button:
+                text: "Назад"
+                on_press: root.prev()
+            Button:
+                text: "Далее"
+                on_press: root.next()
+
+
 
 <EndScreen>:
     BoxLayout:
