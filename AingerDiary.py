@@ -17,6 +17,7 @@ import os
 
 __author__ = "Unencrypted"
 connection = None
+cursor = None
 
 
 class ScreenTemplate(Screen):
@@ -75,7 +76,105 @@ class MainScreen(ScreenTemplate):
 
 
 class ShowScreen(ScreenTemplate):
-    pass
+    # TODO сделать экран с отображением графика
+
+    def __init__(self, **kwargs):
+        super(ShowScreen, self).__init__(**kwargs)
+        self.straight_translation = {}
+        self.lucid_translation = {}
+        self.indirect_translation = {}
+        self.exit_type_translation = {0: 2000, 1: 1700, 2: 1200, 3: 1500}
+        self.exit_translation = {"deepening": 175, "holding": 125, "plan_items_done": 400, "catch_try": 200}
+
+    def on_enter(self, *args):
+        self.get_statistics()
+
+    def get_repeated_exit(self, exit_id):
+        command = "SELECT * FROM exits e1 INNER JOIN exits e2 ON WHERE id = ?"
+        cursor.execute(command, exit_id)
+        current_exit = cursor.fetchone()
+        if current_exit[3] is not None:
+            return current_exit + self.get_repeated_exit(current_exit[3])
+        else:
+            return
+
+    def get_statistics(self, date_start, date_stop):
+        date_score_dict = {}
+        repeated_exits = []
+        straight = self.get_straight(date_start, date_stop)
+        lucid = self.get_lucid(date_start, date_stop)
+        indirect_tuple = self.get_indirect(date_start, date_stop)
+        exits = straight + lucid + indirect_tuple[0]
+        if exits:
+            for current_exit in exits:
+                if current_exit[3] is not None:
+                    repeated_exits + self.get_repeated_exit(current_exit[3])
+            exits += repeated_exits
+            for phase_exit in exits:
+                exit_date = phase_exit[9]
+                if exit_date not in date_score_dict:
+                    date_score_dict[exit_date] = 0
+                date_score_dict[exit_date] += self.calculate_exit(phase_exit)
+        indirect_tries = indirect_tuple[1]
+        for indirect_try in indirect_tries:
+            pass
+
+
+
+
+    def calculate_exit(self, phase_exit):
+        current_score = 0
+        exit_type = phase_exit[1]
+        current_score += self.exit_type_translation[exit_type]
+        was_deepening = phase_exit[4]
+        if was_deepening:
+            current_score += self.exit_translation["deepening"]
+        was_holding = phase_exit[5]
+        if was_holding:
+            current_score += self.exit_translation["holding"]
+        current_score += self.exit_translation["plan_items_done"] * phase_exit[6]
+        catch_try = phase_exit[7]
+        if catch_try:
+            current_score += self.exit_translation["catch_try"]
+        return current_score
+
+
+    def get_indirect(self, date_start, date_stop):
+        command = "SELECT * FROM exits" \
+                  "INNER JOIN global_try ON exits.global_try_id = global_try.id" \
+                  "WHERE type = 2 " \
+                  "AND date >= ? AND date <= ?;"
+        cursor.execute(command, (date_start, date_stop))
+        exits = cursor.fetchall()
+        command = "SELECT * FROM indirect" \
+                  "INNER JOIN global_try ON indirect.global_try_id = global_try.id" \
+                  "WHERE date >= ? AND date <= ?;"
+        cursor.execute(command, (date_start, date_stop))
+        indirect = cursor.fetchall()
+        return exits, indirect,
+
+    def get_lucid(self, date_start, date_stop):
+        command = "SELECT * FROM exits " \
+                  "INNER JOIN global_try ON exits.global_try_id = global_try.id" \
+                  "WHERE type = 1" \
+                  "AND date >= ? AND date <= ?"
+        cursor.execute(command, (date_start, date_stop))
+        exits = cursor.fetchall()
+        return exits
+
+    def get_straight(self, date_start, date_stop):
+        command = "SELECT * FROM exits " \
+                  "INNER JOIN global_try ON exits.global_try_id = global_try.id" \
+                  "WHERE type = 0" \
+                  "AND date >= ? AND date <= ?"
+        cursor.execute(command, (date_start, date_stop))
+        exits = cursor.fetchall()
+        return exits
+
+
+
+    def calculate_points(self, things_array):
+        pass
 
 
 class TechniqueScreen(ScreenTemplate):
@@ -299,11 +398,11 @@ class IndirectScreen(ScreenTemplate):
                 self.ids["undesired_asleep"].disabled = self.ids["desired_asleep"].is_checked
 
     def next(self):
-        # TODO сделать нормально взаимодействие с экранами num_
         brightness = self.ids["brightness"].text
         cycles_text = self.ids["number_of_cycles"].text
         num_cycles = (cycles_text or cycles_text == "0") or self.ids["number_of_cycles"].disabled
-        if brightness and num_cycles:
+        legitimate_cycles = not (cycles_text == "0" and self.ids["technique_exit"].is_checked)
+        if brightness and num_cycles and legitimate_cycles:
             self.prepare_next_screen()
             self.manager.switch_to(self.next_screen, direction="left")
             return
@@ -312,6 +411,8 @@ class IndirectScreen(ScreenTemplate):
             content.append('Укажите яркость пробуждения')
         if not num_cycles:
             content.append('Укажите количество циклов техник')
+        if not legitimate_cycles:
+            content.append('Нельзя выйти при помощи техник, не используя техники :/')
         self.show_popup(*content)
 
     def prepare_next_screen(self):
@@ -411,11 +512,9 @@ class ExitScreen(ScreenTemplate):
             next_screen.prev_screen = self
 
 
-class GetStatisticsScreen(ScreenTemplate):
-    # TODO написать логику взаимодействия с базой данных
-
+class SetStatisticsScreen(ScreenTemplate):
     def __init__(self, **kwargs):
-        super(GetStatisticsScreen, self).__init__(**kwargs)
+        super(SetStatisticsScreen, self).__init__(**kwargs)
         self.aggression = None
         self.mechanic = None
         self.confidence = None
@@ -482,8 +581,7 @@ class GetStatisticsScreen(ScreenTemplate):
                 brightness = int(screen.ids["brightness"].text)
                 moving = screen.ids["was_moving"].is_checked
                 division = screen.ids["try_division"].is_checked
-                # TODO check if num_cycles work without cast
-                num_cycles = screen.ids["number_of_cycles"].text
+                num_cycles = int(screen.ids["number_of_cycles"].text)
                 sleep_char = None
                 if screen.ids["undesired_asleep"].is_checked:
                     sleep_char = 0
@@ -499,12 +597,11 @@ class GetStatisticsScreen(ScreenTemplate):
             elif "exit" in screen.name:
                 exit_id = None
                 tech_type = None
-                deepening = int(screen.ids["was_deepening"].is_checked)
-                holding = int(screen.ids["was_holding"].is_checked)
+                deepening = screen.ids["was_deepening"].is_checked
+                holding = screen.ids["was_holding"].is_checked
                 plan_done = int(screen.ids["items_done"].text)
-                catch_try = int(screen.ids["was_catch"].is_checked)
-                repeated = int(screen.ids["was_repeated_try"].is_checked)
-                indirect_id = None
+                catch_try = screen.ids["was_catch"].is_checked
+                repeated = screen.ids["was_repeated_try"].is_checked
                 if screen.type == 0:  # straight
                     tech_type = 0
                 elif screen.type == 1:  # lucid
@@ -513,9 +610,20 @@ class GetStatisticsScreen(ScreenTemplate):
                     tech_type = 2
                 else:  # repeated
                     tech_type = 3
+                    command = "SELECT id FROM exits WHERE id = (SELECT last_insert_rowid())"
+                    cursor.execute(command)
+                    parent_id = cursor.fetchone()[0]
+                    command = "INSERT INTO exits (type, global_try_id, exit_id, deepening," \
+                          " holding, plan_done, catch_try, repeated, indirect_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    cursor.execute(command, (tech_type, global_try_id, exit_id,
+                                             deepening, holding, plan_done, catch_try, repeated, indirect_id))
                     command = "SELECT last_insert_rowid()"
                     cursor.execute(command)
-                    exit_id = cursor.fetchone()[0]
+                    new_insert_id = cursor.fetchone()[0]
+                    command = "UPDATE exits SET exit_id = ? WHERE id = ?"
+                    cursor.execute(command, (new_insert_id, parent_id))
+                    screen = screen.next_screen
+                    continue
                 command = "INSERT INTO exits (type, global_try_id, exit_id, deepening," \
                           " holding, plan_done, catch_try, repeated, indirect_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 cursor.execute(command, (tech_type, global_try_id, exit_id,
@@ -618,10 +726,11 @@ class WindowManager(ScreenManager):
     indirect_present = False
 
     def __init__(self):
-        global connection
+        global connection, cursor
         super(WindowManager, self).__init__()
         base_path = os.getcwd() + os.sep + "AingerDiary.db"
         connection = sqlite3.connect(base_path)
+        cursor = connection.cursor()
 
     def set_lucid(self, is_enabled):
         self.custom_screens["lucid"].ids["number_of_lucid_dreams"].disabled = not is_enabled
@@ -675,10 +784,10 @@ class AingerDiaryApp(App):
         self.sm.custom_screens["lucid"] = (LucidScreen(name="lucid",
                                                        prev_screen=self.sm.custom_screens["technique"]))
         self.sm.custom_screens["last"] = (EndScreen(name="last"))
-        self.sm.custom_screens["statistics"] = GetStatisticsScreen(name="statistics",
+        self.sm.custom_screens["statistics"] = SetStatisticsScreen(name="statistics",
                                                                    prev_screen=self.sm.custom_screens["technique"],
                                                                    next_screen=self.sm.custom_screens["last"])
-        self.sm.custom_screens["last"].prev_screen = self.sm.custom_screens["statistics"]
+        self.sm.custom_screens["last"].prev_screen = self.sm.custom_screens["main_menu"]
         self.sm.switch_to(self.sm.custom_screens["main_menu"])
         # self.sm.switch_to(self.sm.custom_screens["indirect"])
         return self.sm
