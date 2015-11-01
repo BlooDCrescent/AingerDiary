@@ -513,6 +513,7 @@ class ExitScreen(ScreenTemplate):
 
 
 class SetStatisticsScreen(ScreenTemplate):
+    # TODO сделать, чтобы количество полученных очков сохранялось вместе с остальными данными, чтобы не приходилось каждый раз его пересчитывать
     def __init__(self, **kwargs):
         super(SetStatisticsScreen, self).__init__(**kwargs)
         self.aggression = None
