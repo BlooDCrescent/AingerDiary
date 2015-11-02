@@ -626,7 +626,9 @@ class SetStatisticsScreen(ScreenTemplate):
                 brightness = int(screen.ids["brightness"].text)
                 moving = screen.ids["was_moving"].is_checked
                 division = screen.ids["try_division"].is_checked
-                num_cycles = int(screen.ids["number_of_cycles"].text)
+                num_cycles = 0
+                if not screen.ids["division_exit"].is_checked:
+                    num_cycles = int(screen.ids["number_of_cycles"].text)
                 sleep_char = None
                 if screen.ids["undesired_asleep"].is_checked:
                     sleep_char = 0
@@ -683,8 +685,8 @@ class SetStatisticsScreen(ScreenTemplate):
                 cursor.execute(command, (sleep_quality, global_try_id))
             screen = screen.next_screen
         command = "INSERT INTO cached_points (indirect_score, lucid_score, straight_score, " \
-                  "repeated_score, training_score, date) VALUES (?, ?, ?, ?, ?);"
-        cursor.execute(command, (indirect_score, lucid_score, straight_score, training_score,
+                  "repeated_score, training_score, date) VALUES (?, ?, ?, ?, ?, ?);"
+        cursor.execute(command, (indirect_score, lucid_score, straight_score, repeated_score, training_score,
                                  self.manager.custom_screens["ask_date"].ids["pick"].date.isoformat()))
         connection.commit()
         self.manager.switch_to(self.next_screen, direction="left")
