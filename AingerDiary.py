@@ -89,35 +89,35 @@ class ShowScreen(ScreenTemplate):
     def on_enter(self, *args):
         self.get_statistics()
 
-    def get_repeated_exit(self, exit_id):
-        command = "SELECT * FROM exits e1 INNER JOIN exits e2 ON WHERE id = ?"
-        cursor.execute(command, exit_id)
-        current_exit = cursor.fetchone()
-        if current_exit[3] is not None:
-            return current_exit + self.get_repeated_exit(current_exit[3])
-        else:
-            return
+    # def get_repeated_exit(self, exit_id):
+    #     command = "SELECT * FROM exits e1 INNER JOIN exits e2 ON WHERE id = ?"
+    #     cursor.execute(command, exit_id)
+    #     current_exit = cursor.fetchone()
+    #     if current_exit[3] is not None:
+    #         return current_exit + self.get_repeated_exit(current_exit[3])
+    #     else:
+    #         return
 
-    def get_statistics(self, date_start, date_stop):
-        date_score_dict = {}
-        repeated_exits = []
-        straight = self.get_straight(date_start, date_stop)
-        lucid = self.get_lucid(date_start, date_stop)
-        indirect_tuple = self.get_indirect(date_start, date_stop)
-        exits = straight + lucid + indirect_tuple[0]
-        if exits:
-            for current_exit in exits:
-                if current_exit[3] is not None:
-                    repeated_exits + self.get_repeated_exit(current_exit[3])
-            exits += repeated_exits
-            for phase_exit in exits:
-                exit_date = phase_exit[9]
-                if exit_date not in date_score_dict:
-                    date_score_dict[exit_date] = 0
-                date_score_dict[exit_date] += self.calculate_exit(phase_exit)
-        indirect_tries = indirect_tuple[1]
-        for indirect_try in indirect_tries:
-            pass
+    # def get_statistics(self, date_start, date_stop):
+    #     date_score_dict = {}
+    #     repeated_exits = []
+    #     straight = self.get_straight(date_start, date_stop)
+    #     lucid = self.get_lucid(date_start, date_stop)
+    #     indirect_tuple = self.get_indirect(date_start, date_stop)
+    #     exits = straight + lucid + indirect_tuple[0]
+    #     if exits:
+    #         for current_exit in exits:
+    #             if current_exit[3] is not None:
+    #                 repeated_exits + self.get_repeated_exit(current_exit[3])
+    #         exits += repeated_exits
+    #         for phase_exit in exits:
+    #             exit_date = phase_exit[9]
+    #             if exit_date not in date_score_dict:
+    #                 date_score_dict[exit_date] = 0
+    #             date_score_dict[exit_date] += self.calculate_exit(phase_exit)
+    #     indirect_tries = indirect_tuple[1]
+    #     for indirect_try in indirect_tries:
+    #         pass
 
 
 
@@ -521,6 +521,45 @@ class SetStatisticsScreen(ScreenTemplate):
         self.confidence = None
         self.at_all_costs = None
         self.intention = None
+        self.straight_translation = {}
+        self.lucid_translation = {}
+        self.indirect_translation = {}
+        self.exit_type_translation = {0: 2000, 1: 1700, 2: 1200, 3: 1500}
+        self.exit_translation = {"deepening": 175, "holding": 125, "plan_items_done": 400, "catch_try": 200}
+
+    def calculate_exit(self, exit_type, was_deepening, was_holding, plan_items_done, catch_try):
+        current_score = 0
+        current_score += self.exit_type_translation[exit_type]
+        if was_deepening:
+            current_score += self.exit_translation["deepening"]
+        if was_holding:
+            current_score += self.exit_translation["holding"]
+        current_score += self.exit_translation["plan_items_done"] * plan_items_done
+        if catch_try:
+            current_score += self.exit_translation["catch_try"]
+        return current_score
+
+    def calculate_indirect_try(self, was_moving, was_division, num_cycles, sleep_char):
+        score = 0
+        if was_moving and was_division:
+            score -= 50
+        elif was_moving:
+            score -= 25
+        elif was_division:
+            score += 75
+        else:
+            pass
+        if num_cycles > 4:
+            score += 75
+        else:
+            score += 35 * num_cycles
+        if sleep_char == 0:
+            score -= 35
+        elif sleep_char == 1:
+            score += 50
+        else:
+            pass
+        return score
 
     def get_basic_variables(self):
         aggression_text = self.ids["aggression"].text
@@ -577,6 +616,11 @@ class SetStatisticsScreen(ScreenTemplate):
         self.insert_global_try(cursor)
         cursor.execute("SELECT last_insert_rowid()")
         global_try_id = cursor.fetchone()[0]
+        indirect_score = 0
+        straight_score = 0
+        lucid_score = 0
+        repeated_score = 0
+        training_score = 0
         while screen != self:
             if "indirect" in screen.name and "exit" not in screen.name:
                 brightness = int(screen.ids["brightness"].text)
@@ -595,6 +639,7 @@ class SetStatisticsScreen(ScreenTemplate):
                 cursor.execute(command, (global_try_id, brightness, moving, division, num_cycles, sleep_char))
                 cursor.execute("SELECT last_insert_rowid()")
                 indirect_id = cursor.fetchone()[0]
+                indirect_score += self.calculate_indirect_try(moving, division, num_cycles, sleep_char)
             elif "exit" in screen.name:
                 exit_id = None
                 tech_type = None
@@ -611,29 +656,36 @@ class SetStatisticsScreen(ScreenTemplate):
                     tech_type = 2
                 else:  # repeated
                     tech_type = 3
-                    command = "SELECT id FROM exits WHERE id = (SELECT last_insert_rowid())"
-                    cursor.execute(command)
-                    parent_id = cursor.fetchone()[0]
-                    command = "INSERT INTO exits (type, global_try_id, exit_id, deepening," \
+                command = "SELECT id FROM exits WHERE id = (SELECT last_insert_rowid())"
+                cursor.execute(command)
+                parent_id = cursor.fetchone()[0]
+                command = "INSERT INTO exits (type, global_try_id, exit_id, deepening," \
                           " holding, plan_done, catch_try, repeated, indirect_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                    cursor.execute(command, (tech_type, global_try_id, exit_id,
-                                             deepening, holding, plan_done, catch_try, repeated, indirect_id))
+                cursor.execute(command, (tech_type, global_try_id, exit_id,
+                                         deepening, holding, plan_done, catch_try, repeated, indirect_id))
+                score = self.calculate_exit(tech_type, deepening, holding, plan_done, catch_try)
+                if tech_type == 0:
+                    straight_score += score
+                elif tech_type == 1:
+                    lucid_score += score
+                elif tech_type == 2:
+                    indirect_score += score
+                elif tech_type == 3:
+                    repeated_score += score
                     command = "SELECT last_insert_rowid()"
                     cursor.execute(command)
                     new_insert_id = cursor.fetchone()[0]
                     command = "UPDATE exits SET exit_id = ? WHERE id = ?"
                     cursor.execute(command, (new_insert_id, parent_id))
-                    screen = screen.next_screen
-                    continue
-                command = "INSERT INTO exits (type, global_try_id, exit_id, deepening," \
-                          " holding, plan_done, catch_try, repeated, indirect_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                cursor.execute(command, (tech_type, global_try_id, exit_id,
-                                         deepening, holding, plan_done, catch_try, repeated, indirect_id))
             elif screen.name == "lucid":
                 sleep_quality = int(screen.ids["dream_quality"].text)
                 command = "UPDATE global_try SET dream_quality = ? WHERE id = ?"
                 cursor.execute(command, (sleep_quality, global_try_id))
             screen = screen.next_screen
+        command = "INSERT INTO cached_points (indirect_score, lucid_score, straight_score, " \
+                  "repeated_score, training_score, date) VALUES (?, ?, ?, ?, ?);"
+        cursor.execute(command, (indirect_score, lucid_score, straight_score, training_score,
+                                 self.manager.custom_screens["ask_date"].ids["pick"].date.isoformat()))
         connection.commit()
         self.manager.switch_to(self.next_screen, direction="left")
 
