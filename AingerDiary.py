@@ -80,14 +80,9 @@ class ShowScreen(ScreenTemplate):
 
     def __init__(self, **kwargs):
         super(ShowScreen, self).__init__(**kwargs)
-        self.straight_translation = {}
-        self.lucid_translation = {}
-        self.indirect_translation = {}
-        self.exit_type_translation = {0: 2000, 1: 1700, 2: 1200, 3: 1500}
-        self.exit_translation = {"deepening": 175, "holding": 125, "plan_items_done": 400, "catch_try": 200}
 
     def on_enter(self, *args):
-        self.get_statistics()
+        self.draw_screen()
 
     # def get_repeated_exit(self, exit_id):
     #     command = "SELECT * FROM exits e1 INNER JOIN exits e2 ON WHERE id = ?"
@@ -513,7 +508,6 @@ class ExitScreen(ScreenTemplate):
 
 
 class SetStatisticsScreen(ScreenTemplate):
-    # TODO сделать, чтобы количество полученных очков сохранялось вместе с остальными данными, чтобы не приходилось каждый раз его пересчитывать
     def __init__(self, **kwargs):
         super(SetStatisticsScreen, self).__init__(**kwargs)
         self.aggression = None
