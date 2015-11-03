@@ -80,6 +80,9 @@
             id: ask_indirect
             label_text: "Использовались ли непрямые техники?"
             disabled: True
+        AskWidget:
+            id: ask_training
+            label_text: "Были ли тренировки?"
         BoxLayout:
             orientation: 'horizontal'
             Button:
@@ -309,7 +312,10 @@
         size_hint: 1, 1
         orientation: 'vertical'
         Label:
-            text: "Заглушка для экрана дневника снов"
+            text: "Введите описание сна:"
+        TextInput:
+            id: dream
+            text: ""
         BoxLayout:
             Button:
                 text: "Назад"
