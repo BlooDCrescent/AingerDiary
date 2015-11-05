@@ -61,7 +61,35 @@
         id: text_input
         size_hint_x: 0.2
 
-# TODO сделать дополнительный пункт про тренировки.
+# TODO сделать дополнительный экран про тренировки
+<TrainingScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: 1, 1
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: "Сделана проверка на реальность"
+            TextInput:
+                text: '0'
+            Button:
+                text: "X"
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: "Выполнена тренировка техник"
+            TextInput:
+                text: '0'
+            Button:
+                text: "X"
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: "Назад"
+            Button:
+                text: "Подтвердить"
+
+
 <TechniqueScreen>:
     BoxLayout:
         orientation: 'vertical'

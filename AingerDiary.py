@@ -113,6 +113,8 @@ class ShowScreen(ScreenTemplate):
     #     indirect_tries = indirect_tuple[1]
     #     for indirect_try in indirect_tries:
     #         pass
+    def newlines(self):
+        pass
 
 
 
@@ -171,6 +173,8 @@ class ShowScreen(ScreenTemplate):
     def calculate_points(self, things_array):
         pass
 
+class TrainingScreen(ScreenTemplate):
+    pass
 
 class TechniqueScreen(ScreenTemplate):
     def __init__(self, **kwargs):
