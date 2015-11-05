@@ -1,4 +1,3 @@
-import datetime
 from kivy.app import App
 from kivy.clock import Clock
 # from kivy.lang import Builder
@@ -117,6 +116,8 @@ class ShowScreen(ScreenTemplate):
 
 
 
+class TrainingScreen(ScreenTemplate):
+    pass
 
 class TechniqueScreen(ScreenTemplate):
     def __init__(self, **kwargs):
@@ -734,7 +735,7 @@ class WindowManager(ScreenManager):
         self.custom_screens["lucid"].ids["number_of_indirect_tries"].disabled = not is_enabled
 
     def switch_show(self):
-        self.switch_to(self.custom_screens["date_start"], direction="left")
+        self.switch_to(self.custom_screens["show"], direction="left")
 
     def switch_date(self):
         self.switch_to(self.custom_screens["ask_date"], direction="left")
@@ -780,11 +781,11 @@ class AingerDiaryApp(App):
         self.sm.custom_screens["technique"] = TechniqueScreen(name="technique",
                                                               prev_screen=self.sm.custom_screens["ask_date"])
         self.sm.custom_screens["ask_date"].next_screen = self.sm.custom_screens["technique"]
-        self.sm.custom_screens["straight"] = StraightScreen(name="straight",
-                                                            prev_screen=self.sm.custom_screens["technique"])
-        self.sm.custom_screens["lucid"] = LucidScreen(name="lucid",
-                                                      prev_screen=self.sm.custom_screens["technique"])
-        self.sm.custom_screens["last"] = EndScreen(name="last")
+        self.sm.custom_screens["straight"] = (StraightScreen(name="straight",
+                                                             prev_screen=self.sm.custom_screens["technique"]))
+        self.sm.custom_screens["lucid"] = (LucidScreen(name="lucid",
+                                                       prev_screen=self.sm.custom_screens["technique"]))
+        self.sm.custom_screens["last"] = (EndScreen(name="last"))
         self.sm.custom_screens["statistics"] = SetStatisticsScreen(name="statistics",
                                                                    prev_screen=self.sm.custom_screens["technique"],
                                                                    next_screen=self.sm.custom_screens["last"])
