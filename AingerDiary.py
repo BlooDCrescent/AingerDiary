@@ -1,3 +1,4 @@
+import datetime
 from kivy.app import App
 from kivy.clock import Clock
 # from kivy.lang import Builder
@@ -6,6 +7,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
+import math
 import Calendar
 # from kivy.uix.widget import Widget
 from graph import Graph, MeshLinePlot
@@ -14,6 +16,7 @@ from kivy.properties import ObjectProperty, StringProperty, BooleanProperty, Num
 from functools import partial
 import sqlite3
 import os
+import string
 
 __author__ = "Unencrypted"
 connection = None
@@ -68,108 +71,51 @@ class ScreenTemplate(Screen):
 
 
 class MainScreen(ScreenTemplate):
-    def go_try(self):
-        self.switch("ask_date", "left")
-
-    def go_show(self):
-        self.switch("show", "left")
+    pass
 
 
 class ShowScreen(ScreenTemplate):
     # TODO сделать экран с отображением графика
+    graph = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(ShowScreen, self).__init__(**kwargs)
 
     def on_enter(self, *args):
-        self.draw_screen()
+        date_start = self.prev_screen.prev_screen.pick.date
+        date_stop = self.prev_screen.pick.date
+        self.draw_screen(date_start, date_stop)
 
-    # def get_repeated_exit(self, exit_id):
-    #     command = "SELECT * FROM exits e1 INNER JOIN exits e2 ON WHERE id = ?"
-    #     cursor.execute(command, exit_id)
-    #     current_exit = cursor.fetchone()
-    #     if current_exit[3] is not None:
-    #         return current_exit + self.get_repeated_exit(current_exit[3])
-    #     else:
-    #         return
-
-    # def get_statistics(self, date_start, date_stop):
-    #     date_score_dict = {}
-    #     repeated_exits = []
-    #     straight = self.get_straight(date_start, date_stop)
-    #     lucid = self.get_lucid(date_start, date_stop)
-    #     indirect_tuple = self.get_indirect(date_start, date_stop)
-    #     exits = straight + lucid + indirect_tuple[0]
-    #     if exits:
-    #         for current_exit in exits:
-    #             if current_exit[3] is not None:
-    #                 repeated_exits + self.get_repeated_exit(current_exit[3])
-    #         exits += repeated_exits
-    #         for phase_exit in exits:
-    #             exit_date = phase_exit[9]
-    #             if exit_date not in date_score_dict:
-    #                 date_score_dict[exit_date] = 0
-    #             date_score_dict[exit_date] += self.calculate_exit(phase_exit)
-    #     indirect_tries = indirect_tuple[1]
-    #     for indirect_try in indirect_tries:
-    #         pass
-
-
-
-
-    def calculate_exit(self, phase_exit):
-        current_score = 0
-        exit_type = phase_exit[1]
-        current_score += self.exit_type_translation[exit_type]
-        was_deepening = phase_exit[4]
-        if was_deepening:
-            current_score += self.exit_translation["deepening"]
-        was_holding = phase_exit[5]
-        if was_holding:
-            current_score += self.exit_translation["holding"]
-        current_score += self.exit_translation["plan_items_done"] * phase_exit[6]
-        catch_try = phase_exit[7]
-        if catch_try:
-            current_score += self.exit_translation["catch_try"]
-        return current_score
-
-
-    def get_indirect(self, date_start, date_stop):
-        command = "SELECT * FROM exits" \
-                  "INNER JOIN global_try ON exits.global_try_id = global_try.id" \
-                  "WHERE type = 2 " \
-                  "AND date >= ? AND date <= ?;"
+    def draw_screen(self, date_start, date_stop):
+        command = "SELECT * FROM cached_points WHERE " \
+                  "date >= ? AND date <= ?" \
+                  "ORDER BY date;"
         cursor.execute(command, (date_start, date_stop))
-        exits = cursor.fetchall()
-        command = "SELECT * FROM indirect" \
-                  "INNER JOIN global_try ON indirect.global_try_id = global_try.id" \
-                  "WHERE date >= ? AND date <= ?;"
-        cursor.execute(command, (date_start, date_stop))
-        indirect = cursor.fetchall()
-        return exits, indirect,
+        data_sets = cursor.fetchall()
+        if data_sets:
+            total_points = list(map(lambda subset: subset[1] + subset[2] + subset[3] + subset[4], data_sets))
+            min_points = total_points[0]
+            max_points = total_points[0]
+            min_date = self.iso_to_date(data_sets[0][6])
+            max_date = self.iso_to_date(data_sets[0][6])
+            print(min_date, max_date, min_points, max_points)
+            for i in range(1, len(total_points)):
+                min_points = min(min_points, total_points[i])
+                max_points = max(max_points, total_points[i])
+                min_date = min(min_date, self.iso_to_date(data_sets[i][6]))
+                max_date = max(max_date, self.iso_to_date(data_sets[i][6]))
+            print(min_date, max_date, min_points, max_points)
 
-    def get_lucid(self, date_start, date_stop):
-        command = "SELECT * FROM exits " \
-                  "INNER JOIN global_try ON exits.global_try_id = global_try.id" \
-                  "WHERE type = 1" \
-                  "AND date >= ? AND date <= ?"
-        cursor.execute(command, (date_start, date_stop))
-        exits = cursor.fetchall()
-        return exits
+        else:
+            self.show_popup("Нет данных по данному промежутку времени.")
+            self.prev()
 
-    def get_straight(self, date_start, date_stop):
-        command = "SELECT * FROM exits " \
-                  "INNER JOIN global_try ON exits.global_try_id = global_try.id" \
-                  "WHERE type = 0" \
-                  "AND date >= ? AND date <= ?"
-        cursor.execute(command, (date_start, date_stop))
-        exits = cursor.fetchall()
-        return exits
+    @staticmethod
+    def iso_to_date(date):
+        return datetime.date(*list(map(int, date.split("-"))))
 
 
 
-    def calculate_points(self, things_array):
-        pass
 
 
 class TechniqueScreen(ScreenTemplate):
@@ -788,7 +734,7 @@ class WindowManager(ScreenManager):
         self.custom_screens["lucid"].ids["number_of_indirect_tries"].disabled = not is_enabled
 
     def switch_show(self):
-        self.switch_to(self.custom_screens["show"], direction="left")
+        self.switch_to(self.custom_screens["date_start"], direction="left")
 
     def switch_date(self):
         self.switch_to(self.custom_screens["ask_date"], direction="left")
@@ -820,19 +766,25 @@ class AingerDiaryApp(App):
         self.sm = WindowManager()
 
     def build(self):
-        self.sm.custom_screens["main_menu"] = (MainScreen(name="main_menu"))
-        self.sm.custom_screens["show"] = (ShowScreen(name="show",
-                                                     prev_screen=self.sm.custom_screens["main_menu"]))
-        self.sm.custom_screens["ask_date"] = (AskDateScreen(name="ask_date",
-                                                            prev_screen=self.sm.custom_screens["main_menu"]))
-        self.sm.custom_screens["technique"] = (TechniqueScreen(name="technique",
-                                                               prev_screen=self.sm.custom_screens["ask_date"]))
+        self.sm.custom_screens["main_menu"] = MainScreen(name="main_menu")
+        self.sm.custom_screens["date_start"] = AskDateScreen(name="date_start",
+                                                             prev_screen=self.sm.custom_screens["main_menu"])
+        self.sm.custom_screens["date_stop"] = AskDateScreen(name="date_stop",
+                                                            prev_screen=self.sm.custom_screens["date_start"])
+        self.sm.custom_screens["show"] = ShowScreen(name="show",
+                                                    prev_screen=self.sm.custom_screens["date_stop"])
+        self.sm.custom_screens["date_start"].next_screen = self.sm.custom_screens["date_stop"]
+        self.sm.custom_screens["date_stop"].next_screen = self.sm.custom_screens["show"]
+        self.sm.custom_screens["ask_date"] = AskDateScreen(name="ask_date",
+                                                           prev_screen=self.sm.custom_screens["main_menu"])
+        self.sm.custom_screens["technique"] = TechniqueScreen(name="technique",
+                                                              prev_screen=self.sm.custom_screens["ask_date"])
         self.sm.custom_screens["ask_date"].next_screen = self.sm.custom_screens["technique"]
-        self.sm.custom_screens["straight"] = (StraightScreen(name="straight",
-                                                             prev_screen=self.sm.custom_screens["technique"]))
-        self.sm.custom_screens["lucid"] = (LucidScreen(name="lucid",
-                                                       prev_screen=self.sm.custom_screens["technique"]))
-        self.sm.custom_screens["last"] = (EndScreen(name="last"))
+        self.sm.custom_screens["straight"] = StraightScreen(name="straight",
+                                                            prev_screen=self.sm.custom_screens["technique"])
+        self.sm.custom_screens["lucid"] = LucidScreen(name="lucid",
+                                                      prev_screen=self.sm.custom_screens["technique"])
+        self.sm.custom_screens["last"] = EndScreen(name="last")
         self.sm.custom_screens["statistics"] = SetStatisticsScreen(name="statistics",
                                                                    prev_screen=self.sm.custom_screens["technique"],
                                                                    next_screen=self.sm.custom_screens["last"])
