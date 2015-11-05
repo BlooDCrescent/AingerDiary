@@ -16,6 +16,7 @@ from functools import partial
 import sqlite3
 import os
 import string
+import datetime
 
 __author__ = "Unencrypted"
 connection = None
@@ -76,11 +77,21 @@ class MainScreen(ScreenTemplate):
 class ShowScreen(ScreenTemplate):
     # TODO сделать экран с отображением графика
     graph = ObjectProperty(None)
-
+    #   def __init__(self, **kwargs):
+    #     super(RootWidget, self).__init__(**kwargs)
+    #     self.graph = Graph(xlabel='X', ylabel='Y', x_ticks_minor=5,
+    #                   x_ticks_major=25, y_ticks_major=1,
+    #                   y_grid_label=True, x_grid_label=True, padding=5,
+    #                   x_grid=True, y_grid=True, xmin=-0, xmax=100, ymin=-1, ymax=1)
+    #     plot = MeshLinePlot(color=[1, 0, 0, 1])
+    #     plot.points = [(x, sin(x / 10.)) for x in range(0, 101)]
+    #     self.graph.add_plot(plot)
+    #     self.add_widget(self.graph)
+    
     def __init__(self, **kwargs):
         super(ShowScreen, self).__init__(**kwargs)
 
-    def on_enter(self, *args):
+    def on_pre_enter(self, *args):
         date_start = self.prev_screen.prev_screen.pick.date
         date_stop = self.prev_screen.pick.date
         self.draw_screen(date_start, date_stop)
@@ -103,8 +114,38 @@ class ShowScreen(ScreenTemplate):
                 max_points = max(max_points, total_points[i])
                 min_date = min(min_date, self.iso_to_date(data_sets[i][6]))
                 max_date = max(max_date, self.iso_to_date(data_sets[i][6]))
-            print(min_date, max_date, min_points, max_points)
-
+            self.graph.ymin = min(min_points, 0)
+            self.graph.ymax = max_points
+            self.graph.xmin = -0
+            self.graph.xmax = max_date.toordinal() - min_date.toordinal()
+            self.graph.x_ticks_major = self.graph.xmax / 2.0
+            self.graph.x_ticks_minor = self.graph.xmax / 10.0
+            self.graph.y_ticks_major = max_points / 2.0
+            self.graph.y_ticks_minor = max_points / 10.0
+            self.graph.xgrid = True
+            self.graph.ygrid = True
+            straight_plot = MeshLinePlot(color=[1, 1, 1, 1])
+            lucid_plot = MeshLinePlot(color=[1, 1, 1, 1])
+            indirect_plot = MeshLinePlot(color=[1, 1, 1, 1])
+            repeated_plot = MeshLinePlot(color=[1, 1, 1, 1])
+            training_plot = MeshLinePlot(color=[1, 1, 1, 1])
+            plots = [straight_plot, lucid_plot, indirect_plot, repeated_plot, training_plot]
+            points_lists = [[], [], [], [], []]
+            for data_set in data_sets:
+                straight_score = data_set[3]
+                lucid_score = straight_score + data_set[2]
+                indirect_score = lucid_score + data_set[1]
+                repeated_score = indirect_score + data_set[4]
+                training_score = repeated_score + data_set[5]
+                scores = [straight_score, lucid_score, indirect_score, repeated_score, training_score]
+                for num in range(0, len(plots)):
+                    point = self.iso_to_date(data_set[6]).toordinal() - min_date.toordinal(), scores[num]
+                    (points_lists[num]).append(point)
+            for num_plot in range(0, len(plots)):
+                plot = plots[num_plot]
+                plot.points = points_lists[num_plot]
+                self.graph.add_plot(plot)
+            print(self.graph.size)
         else:
             self.show_popup("Нет данных по данному промежутку времени.")
             self.prev()
@@ -735,7 +776,7 @@ class WindowManager(ScreenManager):
         self.custom_screens["lucid"].ids["number_of_indirect_tries"].disabled = not is_enabled
 
     def switch_show(self):
-        self.switch_to(self.custom_screens["show"], direction="left")
+        self.switch_to(self.custom_screens["date_start"], direction="left")
 
     def switch_date(self):
         self.switch_to(self.custom_screens["ask_date"], direction="left")
