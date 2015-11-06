@@ -76,18 +76,18 @@ class MainScreen(ScreenTemplate):
 
 class ShowScreen(ScreenTemplate):
     # TODO сделать экран с отображением графика
-    graph = ObjectProperty(None)
+    graph_container = ObjectProperty(None)
     #   def __init__(self, **kwargs):
     #     super(RootWidget, self).__init__(**kwargs)
-    #     self.graph = Graph(xlabel='X', ylabel='Y', x_ticks_minor=5,
+    #     graph = Graph(xlabel='X', ylabel='Y', x_ticks_minor=5,
     #                   x_ticks_major=25, y_ticks_major=1,
     #                   y_grid_label=True, x_grid_label=True, padding=5,
     #                   x_grid=True, y_grid=True, xmin=-0, xmax=100, ymin=-1, ymax=1)
     #     plot = MeshLinePlot(color=[1, 0, 0, 1])
     #     plot.points = [(x, sin(x / 10.)) for x in range(0, 101)]
-    #     self.graph.add_plot(plot)
-    #     self.add_widget(self.graph)
-    
+    #     graph.add_plot(plot)
+    #     self.add_widget(graph)
+
     def __init__(self, **kwargs):
         super(ShowScreen, self).__init__(**kwargs)
 
@@ -103,7 +103,7 @@ class ShowScreen(ScreenTemplate):
         cursor.execute(command, (date_start, date_stop))
         data_sets = cursor.fetchall()
         if data_sets:
-            total_points = list(map(lambda subset: subset[1] + subset[2] + subset[3] + subset[4], data_sets))
+            total_points = list(map(lambda subset: subset[1] + subset[2] + subset[3] + subset[4] + subset[5], data_sets))
             min_points = total_points[0]
             max_points = total_points[0]
             min_date = self.iso_to_date(data_sets[0][6])
@@ -114,16 +114,11 @@ class ShowScreen(ScreenTemplate):
                 max_points = max(max_points, total_points[i])
                 min_date = min(min_date, self.iso_to_date(data_sets[i][6]))
                 max_date = max(max_date, self.iso_to_date(data_sets[i][6]))
-            self.graph.ymin = min(min_points, 0)
-            self.graph.ymax = max_points
-            self.graph.xmin = -0
-            self.graph.xmax = max_date.toordinal() - min_date.toordinal()
-            self.graph.x_ticks_major = self.graph.xmax / 2.0
-            self.graph.x_ticks_minor = self.graph.xmax / 10.0
-            self.graph.y_ticks_major = max_points / 2.0
-            self.graph.y_ticks_minor = max_points / 10.0
-            self.graph.xgrid = True
-            self.graph.ygrid = True
+            x_max = max_date.toordinal() - min_date.toordinal()
+            graph = Graph(ymin=min(min_points, 0), ymax=max_points, xmin=-0, xmax=x_max, x_ticks_major=x_max / 5,
+                          x_ticks_minor=x_max / 20, y_ticks_major=max_points / 5,
+                          y_ticks_minor=max_points / 20, xgrid=True, ygrid=True, xlabel="Дни", ylabel="Прогресс",
+                          x_grid_label=True, y_grid_label=True)
             straight_plot = MeshLinePlot(color=[1, 1, 1, 1])
             lucid_plot = MeshLinePlot(color=[1, 1, 1, 1])
             indirect_plot = MeshLinePlot(color=[1, 1, 1, 1])
@@ -144,8 +139,8 @@ class ShowScreen(ScreenTemplate):
             for num_plot in range(0, len(plots)):
                 plot = plots[num_plot]
                 plot.points = points_lists[num_plot]
-                self.graph.add_plot(plot)
-            print(self.graph.size)
+                graph.add_plot(plot)
+            self.graph_container.add_widget(graph)
         else:
             self.show_popup("Нет данных по данному промежутку времени.")
             self.prev()

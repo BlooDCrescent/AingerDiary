@@ -150,7 +150,7 @@ class Graph(Widget):
         super(Graph, self).__init__(**kwargs)
 
         with self.canvas:
-            self._fbo = Fbo(size=self.size, with_stencilbuffer=True)
+            self._fbo = Fbo(size=self.size, with_stencilbuffer=False)
 
         with self._fbo:
             self._background_color = Color(*self.background_color)
@@ -274,8 +274,7 @@ class Graph(Widget):
                 # distance between each tick
                 tick_dist = major / float(minor if minor else 1.0)
                 n_ticks = int(floor((s_max - s_min) / tick_dist) + 1)
-                points_major = [0] * int(floor((s_max - s_min) / float(major))
-                                         + 1)
+                points_major = [0] * int(floor((s_max - s_min) / float(major)) + 1)
                 points_minor = [0] * (n_ticks - len(points_major) + 1)
                 k = 0  # position in points major
                 k2 = 0  # position in points minor
