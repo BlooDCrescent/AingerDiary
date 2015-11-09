@@ -17,6 +17,7 @@ import sqlite3
 import os
 import string
 import datetime
+from kivy.utils import get_color_from_hex as rgb
 
 __author__ = "Unencrypted"
 connection = None
@@ -47,21 +48,23 @@ class ScreenTemplate(Screen):
         popup.open()
 
     def create_screens(self, screen_type, count):
-        types = {"straight": ExitScreen, "lucid": ExitScreen, "indirect": IndirectScreen}
-        type_names = {"straight": "Прямой выход", "lucid": "Осознание во сне", "indirect": ""}
-        type_typos = {"straight": "exit", "lucid": "exit", "indirect": ""}
+        types = {"straight": ExitScreen, "lucid": ExitScreen, "indirect": IndirectScreen, "dream": DreamDiaryScreen}
+        type_names = {"straight": "Прямой выход", "lucid": "Осознание во сне", "indirect": "", "dream": ""}
+        type_typos = {"straight": "exit", "lucid": "exit", "indirect": "", "dream":""}
         to_remove = []
         for screen in self.manager.custom_screens:
             if screen.startswith(screen_type) and not (screen == screen_type):
                 to_remove.append(screen)
         for screen in to_remove:
             self.manager.custom_screens.pop(screen, None)
-        return_screen = new_screen = types[screen_type](name=screen_type + "0" + type_typos[screen_type], screen_type=type_names[screen_type])
+        return_screen = new_screen = types[screen_type](name=screen_type + "0" + type_typos[screen_type],
+                                                        screen_type=type_names[screen_type])
         self.manager.custom_screens[new_screen.name] = new_screen
         new_screen.prev_screen = self
         last_screen = new_screen
         for i in range(0, count - 1):
-            new_screen = types[screen_type](name=(screen_type + str(i + 1) + type_typos[screen_type]), screen_type=type_names[screen_type])
+            new_screen = types[screen_type](name=(screen_type + str(i + 1) + type_typos[screen_type]),
+                                            screen_type=type_names[screen_type])
             new_screen.prev_screen = last_screen
             last_screen.next_screen = new_screen
             last_screen = new_screen
@@ -71,7 +74,8 @@ class ScreenTemplate(Screen):
 
 
 class MainScreen(ScreenTemplate):
-    pass
+    def switch_training(self):
+        self.manager.switch_to(self.manager.custom_screens["training"])
 
 
 class ShowScreen(ScreenTemplate):
@@ -115,23 +119,27 @@ class ShowScreen(ScreenTemplate):
                 min_date = min(min_date, self.iso_to_date(data_sets[i][6]))
                 max_date = max(max_date, self.iso_to_date(data_sets[i][6]))
             x_max = max_date.toordinal() - min_date.toordinal()
-            graph = Graph(ymin=min(min_points, 0), ymax=max_points, xmin=-0, xmax=x_max, x_ticks_major=x_max / 5,
-                          x_ticks_minor=x_max / 20, y_ticks_major=max_points / 5,
-                          y_ticks_minor=max_points / 20, xgrid=True, ygrid=True, xlabel="Дни", ylabel="Прогресс",
-                          x_grid_label=True, y_grid_label=True)
-            straight_plot = MeshLinePlot(color=[1, 1, 1, 1])
-            lucid_plot = MeshLinePlot(color=[1, 1, 1, 1])
-            indirect_plot = MeshLinePlot(color=[1, 1, 1, 1])
-            repeated_plot = MeshLinePlot(color=[1, 1, 1, 1])
-            training_plot = MeshLinePlot(color=[1, 1, 1, 1])
+            graph = Graph(xgrid=True, ygrid=True, ymin=min(min_points, 0), ymax=max_points, xmin=-0, xmax=x_max,
+                          x_ticks_major=x_max / 2, y_ticks_major=max_points / 5,  xlabel="Дни", ylabel="Прогресс",
+                          x_grid_label=True, y_grid_label=True, background_color=[1, 1, 1, 1], border_color=[0.65, 0.41, 0, 1],
+                          label_options={'color': rgb('000000')})
+            straight_plot = MeshLinePlot(color=[0, 0, 1, 1])
+            lucid_plot = MeshLinePlot(color=[0, 1, 0, 1])
+            indirect_plot = MeshLinePlot(color=[0, 1, 1, 1])
+            repeated_plot = MeshLinePlot(color=[1, 0, 0, 1])
+            training_plot = MeshLinePlot(color=[0, 0, 0, 1])
             plots = [straight_plot, lucid_plot, indirect_plot, repeated_plot, training_plot]
             points_lists = [[], [], [], [], []]
             for data_set in data_sets:
                 straight_score = data_set[3]
                 lucid_score = straight_score + data_set[2]
+                lucid_score += lucid_score * 0.01
                 indirect_score = lucid_score + data_set[1]
+                indirect_score += indirect_score * 0.01
                 repeated_score = indirect_score + data_set[4]
+                repeated_score += repeated_score * 0.01
                 training_score = repeated_score + data_set[5]
+                training_score += training_score * 0.01
                 scores = [straight_score, lucid_score, indirect_score, repeated_score, training_score]
                 for num in range(0, len(plots)):
                     point = self.iso_to_date(data_set[6]).toordinal() - min_date.toordinal(), scores[num]
@@ -153,7 +161,17 @@ class ShowScreen(ScreenTemplate):
 
 
 class TrainingScreen(ScreenTemplate):
-    pass
+    def next(self):
+        num_dreams = self.ids["num_dreams"].text
+        if num_dreams:
+            return_tuple = self.create_screens("dream", int(num_dreams))
+            next_screen = self.next_screen
+            return_tuple[1].next_screen = next_screen
+            next_screen.prev_screen = return_tuple[1]
+            return_tuple[0].prev_screen = self
+            self.next_screen = return_tuple[0]
+        super(TrainingScreen, self).next()
+
 
 class TechniqueScreen(ScreenTemplate):
     def __init__(self, **kwargs):
@@ -669,6 +687,10 @@ class SetStatisticsScreen(ScreenTemplate):
         self.manager.switch_to(self.next_screen, direction="left")
 
 
+class DreamDiaryScreen(ScreenTemplate):
+    pass
+
+
 class EndScreen(ScreenTemplate):
     pass
 
@@ -826,6 +848,9 @@ class AingerDiaryApp(App):
                                                                    prev_screen=self.sm.custom_screens["technique"],
                                                                    next_screen=self.sm.custom_screens["last"])
         self.sm.custom_screens["last"].prev_screen = self.sm.custom_screens["main_menu"]
+        self.sm.custom_screens["training"] = \
+            TrainingScreen(name="training", prev_screen=self.sm.custom_screens["main_menu"],
+                           next_screen=self.sm.custom_screens["last"])
         self.sm.switch_to(self.sm.custom_screens["main_menu"])
         # self.sm.switch_to(self.sm.custom_screens["indirect"])
         return self.sm

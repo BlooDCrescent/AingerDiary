@@ -139,8 +139,7 @@ class Graph(Widget):
     '''
 
     border_color = ListProperty([1, 1, 1, 1])
-    '''Color of the border, defaults to white
-    '''
+    '''Color of the border, defaults to white'''
 
     label_options = DictProperty()
     '''Label options that will be passed to `:class:`kivy.uix.Label`.

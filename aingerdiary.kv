@@ -9,10 +9,11 @@
             text: "Посмотреть статистику"
             on_press: root.manager.switch_show()
         Button:
-            text: "Добавить день с попытками"
+            text: "Добавить попытки"
             on_press: root.manager.switch_date()
         Button:
-            text: "Просмотреть предыдущие дни"
+            text: "Добавить тренировки"
+            on_press: root.switch_training()
 
 
 <ShowScreen>:
@@ -79,12 +80,17 @@
                 text: '0'
             Button:
                 text: "X"
+        AskNumWidget:
+            id: num_dreams
+            label_text: "Количество снов"
         BoxLayout:
             orientation: 'horizontal'
             Button:
                 text: "Назад"
+                on_press: root.prev()
             Button:
                 text: "Подтвердить"
+                on_press: root.next()
 
 
 <TechniqueScreen>:
