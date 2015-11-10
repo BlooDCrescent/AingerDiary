@@ -47,28 +47,31 @@ class ScreenTemplate(Screen):
         content.add_widget(button)
         popup.open()
 
-    def create_screens(self, screen_type, count):
-        types = {"straight": ExitScreen, "lucid": ExitScreen, "indirect": IndirectScreen, "dream": DreamDiaryScreen}
-        type_names = {"straight": "Прямой выход", "lucid": "Осознание во сне", "indirect": "", "dream": ""}
-        type_typos = {"straight": "exit", "lucid": "exit", "indirect": "", "dream":""}
+    def remove_screens(self, screen_type):
         to_remove = []
         for screen in self.manager.custom_screens:
             if screen.startswith(screen_type) and not (screen == screen_type):
                 to_remove.append(screen)
         for screen in to_remove:
             self.manager.custom_screens.pop(screen, None)
-        return_screen = new_screen = types[screen_type](name=screen_type + "0" + type_typos[screen_type],
-                                                        screen_type=type_names[screen_type])
-        self.manager.custom_screens[new_screen.name] = new_screen
-        new_screen.prev_screen = self
-        last_screen = new_screen
-        for i in range(0, count - 1):
-            new_screen = types[screen_type](name=(screen_type + str(i + 1) + type_typos[screen_type]),
+
+    def create_screens(self, screen_type, count):
+        types = {"straight": ExitScreen, "lucid": ExitScreen, "indirect": IndirectScreen, "dream": DreamDiaryScreen}
+        type_names = {"straight": "Прямой выход", "lucid": "Осознание во сне", "indirect": "", "dream": ""}
+        type_typos = {"straight": "exit", "lucid": "exit", "indirect": "", "dream": ""}
+        self.remove_screens(screen_type)
+        return_screen = None
+        last_screen = None
+        for i in range(0, count):
+            new_screen = types[screen_type](name=(screen_type + str(i) + type_typos[screen_type]),
                                             screen_type=type_names[screen_type])
-            new_screen.prev_screen = last_screen
-            last_screen.next_screen = new_screen
+            if last_screen:
+                new_screen.prev_screen = last_screen
+                last_screen.next_screen = new_screen
             last_screen = new_screen
             self.manager.custom_screens[new_screen.name] = new_screen
+            if return_screen is None:
+                return_screen = new_screen
         last_screen.next_screen = None
         return return_screen, last_screen
 
