@@ -162,6 +162,7 @@ class ShowScreen(ScreenTemplate):
 
 
 class TrainingScreen(ScreenTemplate):
+    training_scores = {"technique_training": 55, "reality_check": 25, "dream": 100}
     def next(self):
         num_dreams = self.ids["num_dreams"].text
         if num_dreams:
@@ -170,13 +171,41 @@ class TrainingScreen(ScreenTemplate):
             self.next_screen = first_screen
             first_screen.prev_screen = self
             last_screen.next_screen = next_screen
-        if self.ids["reality_check"]:
-            #TODO сделать добавление тренировок в базу данных
-            command = "SELECT 1 FROM training WHERE date = ? "
+        reality_check = self.ids["reality_check"].text
+        technique_training = self.ids["technique_training"].text
+        if reality_check != "0" or technique_training != "0":
+            reality_check = int("0" + reality_check)
+            technique_training = int("0" + technique_training)
+            command = "SELECT technique_training, reality_check FROM training WHERE date = ?;"
+            current_date = datetime.datetime.now().date()
+            cursor.execute(command, (current_date.isoformat(), ))
+            result = cursor.fetchone()
+            if result:
+                reality_check += result[1]
+                technique_training += result[0]
+            command = "INSERT OR REPLACE INTO training (date, technique_training, reality_check) VALUES(?, ?, ?)"
+            cursor.execute(command, (current_date.isoformat(), technique_training, reality_check, ))
+            training_points = self.training_scores["technique_training"] * technique_training + \
+                              self.training_scores["reality_check"] * reality_check
+            command = "INSERT OR REPLACE INTO cached_points (training_score, date) VALUES (?, ?)"
+            cursor.execute(command, (training_points, current_date))
+            connection.commit()
         super(TrainingScreen, self).next()
 
     def on_pre_enter(self, *args):
-        pass
+        command = "SELECT technique_training, reality_check FROM training WHERE date = ?;"
+        current_date = datetime.datetime.now().date()
+        cursor.execute(command, (current_date,))
+        result = cursor.fetchone()
+        if result:
+            self.ids["technique_training"].text = str(result[0])
+            self.ids["reality_check"].text = str(result[1])
+
+    def increment_training(self):
+        self.ids["technique_training"].text = str(int(self.ids["technique_training"].text) + 1)
+
+    def increment_reality(self):
+        self.ids["reality_check"].text = str(int(self.ids["reality_check"].text) + 1)
 
 
 class TechniqueScreen(ScreenTemplate):

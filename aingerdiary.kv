@@ -68,20 +68,18 @@
             orientation: 'horizontal'
             Button:
                 text: "Сделана проверка на реальность"
+                on_press: root.increment_reality()
             TextInput:
                 text: '0'
                 id: reality_check
-            Button:
-                text: "X"
         BoxLayout:
             orientation: 'horizontal'
             Button:
                 text: "Выполнена тренировка техник"
+                on_press: root.increment_training()
             TextInput:
                 text: '0'
                 id: technique_training
-            Button:
-                text: "X"
         AskNumWidget:
             id: num_dreams
             label_text: "Количество снов"
