@@ -161,19 +161,22 @@ class ShowScreen(ScreenTemplate):
         return datetime.date(*list(map(int, date.split("-"))))
 
 
-
-
 class TrainingScreen(ScreenTemplate):
     def next(self):
         num_dreams = self.ids["num_dreams"].text
         if num_dreams:
-            return_tuple = self.create_screens("dream", int(num_dreams))
-            next_screen = self.next_screen
-            return_tuple[1].next_screen = next_screen
-            next_screen.prev_screen = return_tuple[1]
-            return_tuple[0].prev_screen = self
-            self.next_screen = return_tuple[0]
+            first_screen, last_screen = self.create_screens("dream", int(num_dreams))
+            next_screen = self.manager.custom_screens["last"]
+            self.next_screen = first_screen
+            first_screen.prev_screen = self
+            last_screen.next_screen = next_screen
+        if self.ids["reality_check"]:
+            #TODO сделать добавление тренировок в базу данных
+            command = "SELECT 1 FROM training WHERE date = ? "
         super(TrainingScreen, self).next()
+
+    def on_pre_enter(self, *args):
+        pass
 
 
 class TechniqueScreen(ScreenTemplate):
@@ -544,7 +547,7 @@ class SetStatisticsScreen(ScreenTemplate):
         elif was_moving:
             score -= 25
         elif was_division:
-            score += 75
+            score += 350
         else:
             pass
         if num_cycles > 4:
