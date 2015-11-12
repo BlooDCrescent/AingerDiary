@@ -1,6 +1,5 @@
 from kivy.app import App
 from kivy.clock import Clock
-# from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -15,9 +14,7 @@ from kivy.properties import ObjectProperty, StringProperty, BooleanProperty, Num
 from functools import partial
 import sqlite3
 import os
-import string
 import datetime
-from kivy.utils import get_color_from_hex as rgb
 
 __author__ = "Unencrypted"
 connection = None
@@ -82,18 +79,7 @@ class MainScreen(ScreenTemplate):
 
 
 class ShowScreen(ScreenTemplate):
-    # TODO сделать экран с отображением графика
-    graph_container = ObjectProperty(None)
-    #   def __init__(self, **kwargs):
-    #     super(RootWidget, self).__init__(**kwargs)
-    #     graph = Graph(xlabel='X', ylabel='Y', x_ticks_minor=5,
-    #                   x_ticks_major=25, y_ticks_major=1,
-    #                   y_grid_label=True, x_grid_label=True, padding=5,
-    #                   x_grid=True, y_grid=True, xmin=-0, xmax=100, ymin=-1, ymax=1)
-    #     plot = MeshLinePlot(color=[1, 0, 0, 1])
-    #     plot.points = [(x, sin(x / 10.)) for x in range(0, 101)]
-    #     graph.add_plot(plot)
-    #     self.add_widget(graph)
+    graph = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(ShowScreen, self).__init__(**kwargs)
@@ -110,22 +96,25 @@ class ShowScreen(ScreenTemplate):
         cursor.execute(command, (date_start, date_stop))
         data_sets = cursor.fetchall()
         if data_sets:
+            for i in range(len(self.graph.plots)):
+                self.graph.remove_plot(self.graph.plots[0])
             total_points = list(map(lambda subset: subset[1] + subset[2] + subset[3] + subset[4] + subset[5], data_sets))
             min_points = total_points[0]
             max_points = total_points[0]
             min_date = self.iso_to_date(data_sets[0][6])
             max_date = self.iso_to_date(data_sets[0][6])
-            print(min_date, max_date, min_points, max_points)
             for i in range(1, len(total_points)):
                 min_points = min(min_points, total_points[i])
                 max_points = max(max_points, total_points[i])
                 min_date = min(min_date, self.iso_to_date(data_sets[i][6]))
                 max_date = max(max_date, self.iso_to_date(data_sets[i][6]))
             x_max = max_date.toordinal() - min_date.toordinal()
-            graph = Graph(xgrid=True, ygrid=True, ymin=min(min_points, 0), ymax=max_points, xmin=-0, xmax=x_max,
-                          x_ticks_major=x_max / 2, y_ticks_major=max_points / 5,  xlabel="Дни", ylabel="Прогресс",
-                          x_grid_label=True, y_grid_label=True, background_color=[1, 1, 1, 1], border_color=[0.65, 0.41, 0, 1],
-                          label_options={'color': rgb('000000')})
+            self.graph.xmax = x_max
+            self.graph.xmin = -0
+            self.graph.ymin = min(min_points, 0)
+            self.graph.ymax = max_points
+            self.graph.x_ticks_major = x_max / 2
+            self.graph.y_ticks_major = max_points / 5
             straight_plot = MeshLinePlot(color=[0, 0, 1, 1])
             lucid_plot = MeshLinePlot(color=[0, 1, 0, 1])
             indirect_plot = MeshLinePlot(color=[0, 1, 1, 1])
@@ -133,25 +122,28 @@ class ShowScreen(ScreenTemplate):
             training_plot = MeshLinePlot(color=[0, 0, 0, 1])
             plots = [straight_plot, lucid_plot, indirect_plot, repeated_plot, training_plot]
             points_lists = [[], [], [], [], []]
+            is_first = True
             for data_set in data_sets:
                 straight_score = data_set[3]
                 lucid_score = straight_score + data_set[2]
-                lucid_score += lucid_score * 0.01
                 indirect_score = lucid_score + data_set[1]
-                indirect_score += indirect_score * 0.01
                 repeated_score = indirect_score + data_set[4]
-                repeated_score += repeated_score * 0.01
                 training_score = repeated_score + data_set[5]
-                training_score += training_score * 0.01
+                if not is_first:
+                    lucid_score += lucid_score * 0.005
+                    indirect_score += indirect_score * 0.004
+                    repeated_score += repeated_score * 0.0035
+                    training_score += training_score * 0.002
+                else:
+                    is_first = False
                 scores = [straight_score, lucid_score, indirect_score, repeated_score, training_score]
                 for num in range(0, len(plots)):
-                    point = self.iso_to_date(data_set[6]).toordinal() - min_date.toordinal(), scores[num]
+                    point = (self.iso_to_date(data_set[6]).toordinal() - min_date.toordinal(), scores[num],)
                     (points_lists[num]).append(point)
             for num_plot in range(0, len(plots)):
                 plot = plots[num_plot]
                 plot.points = points_lists[num_plot]
-                graph.add_plot(plot)
-            self.graph_container.add_widget(graph)
+                self.graph.add_plot(plot)
         else:
             self.show_popup("Нет данных по данному промежутку времени.")
             self.prev()
@@ -163,6 +155,7 @@ class ShowScreen(ScreenTemplate):
 
 class TrainingScreen(ScreenTemplate):
     training_scores = {"technique_training": 55, "reality_check": 25, "dream": 100}
+
     def next(self):
         num_dreams = self.ids["num_dreams"].text
         if num_dreams:
@@ -194,12 +187,21 @@ class TrainingScreen(ScreenTemplate):
 
     def on_pre_enter(self, *args):
         command = "SELECT technique_training, reality_check FROM training WHERE date = ?;"
-        current_date = datetime.datetime.now().date()
+        current_date = datetime.datetime.now().date().isoformat()
         cursor.execute(command, (current_date,))
         result = cursor.fetchone()
         if result:
             self.ids["technique_training"].text = str(result[0])
             self.ids["reality_check"].text = str(result[1])
+        command = "SELECT * FROM dreams WHERE date = ?;"
+        cursor.execute(command, (current_date,))
+        # TODO прописать минимум снов для поля ввода, хранящего количество снов, установить флаги, отвечающие за
+        # неизменность, пересоздавать экраны только на разность между текущим количеством экранов и хранящимися в базе
+        # Проверять, какой из экранов следующий, если это не последний экран, то тогда обновлять ссылки на экраны, иначе
+        # можно создавать новые. Здесь экраны создаются через тот же самый create_screens, только указывается другое
+        # наименование, возможно? подумать над этим, как следует, возможно, вынести создание экранов в отдельную
+        # процедуру/отрефакторить кусок кода в методе next, так как там много фигни, не связанной с переходом на
+        # следующий экран.
 
     def increment_training(self):
         self.ids["technique_training"].text = str(int(self.ids["technique_training"].text) + 1)
@@ -636,6 +638,8 @@ class SetStatisticsScreen(ScreenTemplate):
                                  self.mechanic, self.at_all_costs, date))
 
     def next(self):
+        # TODO сделать вытаскивание старых значений из базы данных, чтобы добавлять очки за новую попытку к уже
+        # имеющимся
         if not self.get_basic_variables():
             return
         cursor = connection.cursor()
@@ -887,9 +891,7 @@ class AingerDiaryApp(App):
             TrainingScreen(name="training", prev_screen=self.sm.custom_screens["main_menu"],
                            next_screen=self.sm.custom_screens["last"])
         self.sm.switch_to(self.sm.custom_screens["main_menu"])
-        # self.sm.switch_to(self.sm.custom_screens["indirect"])
         return self.sm
-        #return ExitScreen(screen_type="тестовый выход", name="new_exit_screen", next_screen=self.sm.custom_screens["indirect"], manager=self.sm)
 
 
 if __name__ == '__main__':

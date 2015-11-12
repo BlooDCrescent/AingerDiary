@@ -1,5 +1,5 @@
 #encoding: utf-8
-
+#:import rgb kivy.utils.get_color_from_hex
 
 <MainScreen>:
     BoxLayout:
@@ -17,11 +17,21 @@
 
 
 <ShowScreen>:
-    graph_container: graph_container
+    graph: graph
     BoxLayout:
         orientation: 'vertical'
         size_hint: 1, 1
-        id: graph_container
+        Graph:
+            id: graph
+            xgrid: True
+            ygrid: True
+            xlabel: "Дни"
+            ylabel: "Прогресс"
+            x_grid_label: True
+            y_grid_label: True
+            background_color: [1, 1, 1, 1]
+            border_color: [0.65, 0.41, 0, 1]
+            label_options: {'color': rgb('000000')}
         Button:
             size_hint: 1, 0.2
             text: "Назад"
@@ -59,7 +69,7 @@
         id: text_input
         size_hint_x: 0.2
 
-# TODO сделать дополнительный экран про тренировки
+
 <TrainingScreen>:
     BoxLayout:
         orientation: 'vertical'
@@ -337,7 +347,7 @@
                 text: "Подтвердить"
                 on_press: root.next()
 
-# TODO написать экран для записи снов в дневник
+
 <DreamDiaryScreen>:
     BoxLayout:
         size_hint: 1, 1
