@@ -169,13 +169,7 @@ class TrainingScreen(ScreenTemplate):
         if reality_check != "0" or technique_training != "0":
             reality_check = int("0" + reality_check)
             technique_training = int("0" + technique_training)
-            command = "SELECT technique_training, reality_check FROM training WHERE date = ?;"
-            current_date = datetime.datetime.now().date()
-            cursor.execute(command, (current_date.isoformat(), ))
-            result = cursor.fetchone()
-            if result:
-                reality_check += result[1]
-                technique_training += result[0]
+            current_date = datetime.datetime.now().date().isoformat()
             command = "INSERT OR REPLACE INTO training (date, technique_training, reality_check) VALUES(?, ?, ?)"
             cursor.execute(command, (current_date.isoformat(), technique_training, reality_check, ))
             training_points = self.training_scores["technique_training"] * technique_training + \
