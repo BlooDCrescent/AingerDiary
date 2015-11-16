@@ -96,6 +96,9 @@ class ShowScreen(ScreenTemplate):
         cursor.execute(command, (date_start, date_stop))
         data_sets = cursor.fetchall()
         if data_sets:
+            #TODO исправить ошибку, когда показывается статистика всего лишь за один день
+            if len(data_sets) == 1:
+                data_sets *= 2
             for i in range(len(self.graph.plots)):
                 self.graph.remove_plot(self.graph.plots[0])
             total_points = list(map(lambda subset: subset[1] + subset[2] + subset[3] + subset[4] + subset[5], data_sets))
@@ -649,6 +652,7 @@ class SetStatisticsScreen(ScreenTemplate):
         lucid_score = 0
         repeated_score = 0
         training_score = 0
+        date = self.manager.custom_screens["ask_date"].ids["pick"].date.isoformat()
         while screen != self:
             if "indirect" in screen.name and "exit" not in screen.name:
                 brightness = int(screen.ids["brightness"].text)
@@ -712,10 +716,16 @@ class SetStatisticsScreen(ScreenTemplate):
                 command = "UPDATE global_try SET dream_quality = ? WHERE id = ?"
                 cursor.execute(command, (sleep_quality, global_try_id))
             screen = screen.next_screen
+        command = "SELECT * FROM cached_points WHERE date = ?"
+        cursor.execute(command, (date, ))
+        old_points = cursor.fetchone()
+        if not old_points:
+            old_points = [0] * 6
         command = "INSERT INTO cached_points (indirect_score, lucid_score, straight_score, " \
                   "repeated_score, training_score, date) VALUES (?, ?, ?, ?, ?, ?);"
-        cursor.execute(command, (indirect_score, lucid_score, straight_score, repeated_score, training_score,
-                                 self.manager.custom_screens["ask_date"].ids["pick"].date.isoformat()))
+        cursor.execute(command, (indirect_score + old_points[1], lucid_score + old_points[2],
+                                 straight_score + old_points[3], repeated_score + old_points[4],
+                                 training_score + old_points[5], date))
         connection.commit()
         self.manager.switch_to(self.next_screen, direction="left")
 
