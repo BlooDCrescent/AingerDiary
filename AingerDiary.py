@@ -96,9 +96,16 @@ class ShowScreen(ScreenTemplate):
         cursor.execute(command, (date_start, date_stop))
         data_sets = cursor.fetchall()
         if data_sets:
-            #TODO исправить ошибку, когда показывается статистика всего лишь за один день
             if len(data_sets) == 1:
-                data_sets *= 2
+                data_sets = list(data_sets)
+                data_sets[0] = list(data_sets[0])
+                data_sets.append(data_sets[0][:])
+                current_date = datetime.datetime.now().date()
+                current_date.replace(day=current_date.day + 1)
+                data_sets[1][6] = current_date.isoformat()
+                self.show_popup("Выбран всего один день")
+                self.prev_screen.prev()
+                return
             for i in range(len(self.graph.plots)):
                 self.graph.remove_plot(self.graph.plots[0])
             total_points = list(map(lambda subset: subset[1] + subset[2] + subset[3] + subset[4] + subset[5], data_sets))
