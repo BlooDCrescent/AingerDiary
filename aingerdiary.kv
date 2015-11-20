@@ -392,9 +392,14 @@
             size_hint_y: 0.2
         DatePicker:
             id: pick
+        Button:
+            text: "За всё время"
+            size_hint_y: 0.2
+            id: all_the_time
+            on_press: root.all_the_time_next()
         BoxLayout:
             orientation: "horizontal"
-            size_hint_y: 0.3
+            size_hint_y: 0.2
             Button:
                 text: "Назад"
                 on_press: root.prev()

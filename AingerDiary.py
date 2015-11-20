@@ -20,6 +20,8 @@ __author__ = "Unencrypted"
 connection = None
 cursor = None
 
+# GLOBAL TODO сделать экран для просмотра старых снов. Экран для просмотра предыдущих попыток не требуется.
+
 
 class ScreenTemplate(Screen):
     next_screen = ObjectProperty(None, allownone=True)
@@ -635,8 +637,6 @@ class SetStatisticsScreen(ScreenTemplate):
                                  self.mechanic, self.at_all_costs, date))
 
     def next(self):
-        # TODO сделать вытаскивание старых значений из базы данных, чтобы добавлять очки за новую попытку к уже
-        # имеющимся
         if not self.get_basic_variables():
             return
         cursor = connection.cursor()
